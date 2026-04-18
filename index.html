@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>除草作業 完了報告書</title>
+
+  <!-- ===== PWA: iPhoneホーム画面アプリ化 ===== -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="除草報告書">
+  <link rel="apple-touch-icon" id="touch-icon">
+  <!-- Web App Manifest（Android / Chrome 対応） -->
+  <link rel="manifest" href="data:application/json;charset=utf-8,%7B%22name%22%3A%22%E9%99%A4%E8%8D%89%E4%BD%9C%E6%A5%AD%20%E5%AE%8C%E4%BA%86%E5%A0%B1%E5%91%8A%E6%9B%B8%22%2C%22short_name%22%3A%22%E9%99%A4%E8%8D%89%E5%A0%B1%E5%91%8A%E6%9B%B8%22%2C%22display%22%3A%22standalone%22%2C%22orientation%22%3A%22portrait%22%2C%22theme_color%22%3A%22%231a5c2a%22%2C%22background_color%22%3A%22%23ffffff%22%7D">
+  <style>
+    /* ===== 共通 ===== */
+    body {
+      font-family: sans-serif; font-size: 16px; margin: 0; background: #fff;
+      padding: 12px;
+      padding-top:    max(12px, env(safe-area-inset-top));
+      padding-bottom: max(12px, env(safe-area-inset-bottom));
+      padding-left:   max(12px, env(safe-area-inset-left));
+      padding-right:  max(12px, env(safe-area-inset-right));
+    }
+    h1 { font-size: 20px; margin: 8px 0 16px; }
+    h2 { font-size: 17px; background: #2e7d45; color: #fff; padding: 8px 12px; margin: 20px -12px 12px; }
+    h3 { font-size: 16px; color: #1a5c2a; border-left: 4px solid #2e7d45; padding-left: 8px; margin: 14px 0 6px; }
+    label { display: block; font-weight: bold; margin: 10px 0 4px; font-size: 16px; }
+    input[type=text],
+    input[type=date],
+    input[type=password],
+    textarea {
+      display: block; width: 100%; font-size: 16px;
+      padding: 10px; box-sizing: border-box;
+      border: 1px solid #aaa; border-radius: 4px; background: #fff;
+    }
+    textarea { min-height: 80px; resize: vertical; }
+    input[type=file] { display: block; font-size: 16px; margin: 8px 0; width: 100%; }
+
+    /* ===== ログイン画面 ===== */
+    #view-login {
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      min-height: 100svh; padding: 24px; box-sizing: border-box;
+    }
+    .login-box {
+      width: 100%; max-width: 360px;
+      background: #f8fdf9; border: 1px solid #b2d8bc;
+      border-radius: 12px; padding: 32px 24px; box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+    }
+    .login-box .logo {
+      text-align: center; margin-bottom: 28px;
+    }
+    .login-box .logo-icon {
+      font-size: 48px; display: block; margin-bottom: 6px;
+    }
+    .login-box .logo-title {
+      font-size: 18px; font-weight: bold; color: #1a5c2a;
+    }
+    .login-box .logo-sub {
+      font-size: 13px; color: #666; margin-top: 4px;
+    }
+    .login-btn {
+      display: block; width: 100%;
+      font-size: 17px; font-weight: bold;
+      padding: 14px; margin-top: 16px;
+      background: #1a5c2a; color: #fff;
+      border: none; border-radius: 8px;
+      cursor: pointer; -webkit-appearance: none;
+      box-sizing: border-box;
+    }
+    .login-btn:active { background: #144821; }
+    #login-error {
+      display: none; color: #c0392b;
+      font-size: 14px; text-align: center;
+      margin-top: 12px; font-weight: bold;
+    }
+    #logged-user-badge {
+      display: none;
+      font-size: 13px; color: #555; text-align: right;
+      margin-bottom: 4px;
+    }
+
+    /* ===== フォームの写真プレビュー ===== */
+    .prev { display: flex; flex-wrap: wrap; gap: 8px; margin: 6px 0 10px; }
+    .prev img { width: 120px; height: 120px; object-fit: cover; border: 1px solid #aaa; border-radius: 4px; display: block; }
+
+    /* ===== 生成ボタン ===== */
+    .gen-btn {
+      display: block; width: 100%;
+      font-size: 20px; font-weight: bold;
+      padding: 22px; margin: 24px 0;
+      background: #1a5c2a; color: #fff;
+      border: none; border-radius: 8px;
+      cursor: pointer; -webkit-appearance: none; box-sizing: border-box;
+    }
+
+    /* ===== 完了バナー ===== */
+    #done-banner {
+      display: none;
+      background: #1a6ed8; color: #fff;
+      font-size: 16px; font-weight: bold;
+      padding: 16px; text-align: center;
+      line-height: 1.7;
+      position: sticky; top: 0; z-index: 100;
+    }
+    #back-btn {
+      display: none;
+      font-size: 15px; padding: 10px 20px;
+      background: #fff; color: #1a5c2a;
+      border: 2px solid #1a5c2a; border-radius: 6px;
+      cursor: pointer; -webkit-appearance: none;
+      margin: 12px 0;
+    }
+
+    /* ===== 報告書ビュー ===== */
+    #view-report { display: none; max-width: 720px; margin: 0 auto; padding: 0 8px 40px; }
+
+    #view-report h1 { font-size: 22px; text-align: center; margin: 20px 0 4px; }
+    #view-report .r-client { text-align: center; color: #555; margin-bottom: 20px; font-size: 15px; }
+
+    #view-report table { width: 100%; border-collapse: collapse; margin-bottom: 16px; }
+    #view-report th, #view-report td { border: 1px solid #aaa; padding: 8px 10px; font-size: 15px; vertical-align: top; }
+    #view-report th { background: #e8f5ec; width: 36%; white-space: nowrap; }
+
+    #view-report .r-h2 {
+      font-size: 16px; font-weight: bold;
+      background: #2e7d45; color: #fff;
+      padding: 8px 12px; margin: 24px 0 12px;
+    }
+    #view-report .r-h3 {
+      font-size: 15px; color: #1a5c2a;
+      border-left: 4px solid #2e7d45; padding-left: 8px;
+      margin: 14px 0 6px;
+    }
+
+    #view-report .r-photos { display: flex; flex-wrap: wrap; gap: 8px; margin: 6px 0 12px; }
+    #view-report .r-photos img { width: 140px; height: 140px; object-fit: cover; border: 1px solid #aaa; border-radius: 4px; }
+    #view-report .no-photo { color: #999; font-size: 14px; margin: 4px 0 12px; }
+
+    #view-report .r-notes {
+      border: 1px solid #ccc; border-radius: 4px;
+      padding: 10px 12px; background: #fafafa;
+      font-size: 15px; white-space: pre-wrap; min-height: 40px;
+      margin-bottom: 12px;
+    }
+
+    /* A4印刷用 */
+    @media print {
+      #done-banner, #back-btn { display: none !important; }
+      body { padding: 0; margin: 0; }
+      #view-report { max-width: 100%; padding: 0; }
+      #view-report .r-h2 {
+        background: #2e7d45 !important; color: #fff !important;
+        -webkit-print-color-adjust: exact; print-color-adjust: exact;
+      }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ===== ログイン画面 ===== -->
+<div id="view-login">
+  <div class="login-box">
+    <div class="logo">
+      <span class="logo-icon" id="login-icon">🌿</span>
+      <div class="logo-title">除草作業 完了報告書</div>
+      <div class="logo-sub">ログインしてください</div>
+    </div>
+    <label for="login-pass">パスワード</label>
+    <input type="password" id="login-pass" placeholder="パスワードを入力" autocomplete="current-password"
+           onkeydown="if(event.key==='Enter')doLogin()">
+    <button class="login-btn" onclick="doLogin()">ログイン</button>
+    <div id="login-error">パスワードが正しくありません</div>
+  </div>
+</div>
+
+<!-- ===== 完了バナー（生成後に表示） ===== -->
+<div id="done-banner">
+  【完了】この画面をスクリーンショット、またはブラウザの共有メニューから PDF 保存してください
+</div>
+
+<!-- ===== フォームビュー ===== -->
+<div id="view-form" style="display:none;">
+
+  <div id="logged-user-badge"></div>
+  <h1>除草作業 完了報告書</h1>
+
+  <h2>基本情報</h2>
+  <label>案件名</label>
+  <input type="text" id="f-project" placeholder="例：○○住宅地 除草管理作業">
+  <label>提出先（クライアント名）</label>
+  <input type="text" id="f-client" placeholder="例：合同会社 SUNDAY driver &amp; co.">
+  <label>作業日</label>
+  <input type="date" id="f-date">
+  <label>天候 / 気温</label>
+  <input type="text" id="f-weather" placeholder="例：晴れ / 22℃">
+  <label>作業時間帯</label>
+  <input type="text" id="f-time" placeholder="例：08:30 〜 15:00">
+  <label>作業人数</label>
+  <input type="text" id="f-workers" placeholder="例：3名">
+  <label>担当者名（ログイン名）</label>
+  <input type="text" id="f-staff" placeholder="例：山田 太郎" readonly style="background:#f0f8f0;">
+
+  <h2>エリア①</h2>
+  <h3>草刈り作業前（Before）</h3>
+  <div id="prev-fi1b" class="prev"></div>
+  <input type="file" id="fi1b" accept="image/*" multiple onchange="preview(this)">
+  <h3>草刈り作業後（After）</h3>
+  <div id="prev-fi1a" class="prev"></div>
+  <input type="file" id="fi1a" accept="image/*" multiple onchange="preview(this)">
+  <h3>除草剤散布後（現状）</h3>
+  <div id="prev-fi1h" class="prev"></div>
+  <input type="file" id="fi1h" accept="image/*" multiple onchange="preview(this)">
+  <label>所見・気づいた点</label>
+  <textarea id="notes-1" placeholder="エリア①で気づいた点を記入してください"></textarea>
+
+  <h2>エリア②</h2>
+  <h3>草刈り作業前（Before）</h3>
+  <div id="prev-fi2b" class="prev"></div>
+  <input type="file" id="fi2b" accept="image/*" multiple onchange="preview(this)">
+  <h3>草刈り作業後（After）</h3>
+  <div id="prev-fi2a" class="prev"></div>
+  <input type="file" id="fi2a" accept="image/*" multiple onchange="preview(this)">
+  <h3>除草剤散布後（現状）</h3>
+  <div id="prev-fi2h" class="prev"></div>
+  <input type="file" id="fi2h" accept="image/*" multiple onchange="preview(this)">
+  <label>所見・気づいた点</label>
+  <textarea id="notes-2" placeholder="エリア②で気づいた点を記入してください"></textarea>
+
+  <h2>エリア③</h2>
+  <h3>草刈り作業前（Before）</h3>
+  <div id="prev-fi3b" class="prev"></div>
+  <input type="file" id="fi3b" accept="image/*" multiple onchange="preview(this)">
+  <h3>草刈り作業後（After）</h3>
+  <div id="prev-fi3a" class="prev"></div>
+  <input type="file" id="fi3a" accept="image/*" multiple onchange="preview(this)">
+  <h3>除草剤散布後（現状）</h3>
+  <div id="prev-fi3h" class="prev"></div>
+  <input type="file" id="fi3h" accept="image/*" multiple onchange="preview(this)">
+  <label>所見・気づいた点</label>
+  <textarea id="notes-3" placeholder="エリア③で気づいた点を記入してください"></textarea>
+
+  <h2>エリア④</h2>
+  <h3>草刈り作業前（Before）</h3>
+  <div id="prev-fi4b" class="prev"></div>
+  <input type="file" id="fi4b" accept="image/*" multiple onchange="preview(this)">
+  <h3>草刈り作業後（After）</h3>
+  <div id="prev-fi4a" class="prev"></div>
+  <input type="file" id="fi4a" accept="image/*" multiple onchange="preview(this)">
+  <h3>除草剤散布後（現状）</h3>
+  <div id="prev-fi4h" class="prev"></div>
+  <input type="file" id="fi4h" accept="image/*" multiple onchange="preview(this)">
+  <label>所見・気づいた点</label>
+  <textarea id="notes-4" placeholder="エリア④で気づいた点を記入してください"></textarea>
+
+  <h2>全体所見 / 除草剤 / 提案 / 備考</h2>
+  <label>全体所見・気づいた点</label>
+  <textarea id="f-overview" placeholder="全エリアまとめての所見"></textarea>
+  <h3>除草剤使用記録（散布状況写真）</h3>
+  <div id="prev-figh" class="prev"></div>
+  <input type="file" id="figh" accept="image/*" multiple onchange="preview(this)">
+  <label>薬剤名・濃度・散布量など</label>
+  <textarea id="f-herbicide" placeholder="例：ラウンドアップ 50倍希釈 各エリア 2L"></textarea>
+  <h3>次回作業の提案（提案箇所写真）</h3>
+  <div id="prev-figp" class="prev"></div>
+  <input type="file" id="figp" accept="image/*" multiple onchange="preview(this)">
+  <label>次回提案内容</label>
+  <textarea id="f-proposal" placeholder="例：次回推奨は6月上旬"></textarea>
+  <label>備考・連絡事項</label>
+  <textarea id="f-remarks" placeholder="例：散布後2時間は立入禁止"></textarea>
+  <label>iCloud 共有リンク URL（任意）</label>
+  <input type="text" id="f-icloud" placeholder="https://www.icloud.com/photos/...">
+
+  <!-- 生成ボタン -->
+  <input type="button" class="gen-btn" value="報告書を生成" onclick="generateReport()">
+
+</div><!-- /view-form -->
+
+
+<!-- ===== 報告書ビュー（生成後に表示） ===== -->
+<input type="button" id="back-btn" value="← 入力画面に戻る" onclick="backToForm()">
+<div id="view-report"></div>
+
+
+<!-- ===== JavaScript ===== -->
+<script>
+/* =====================================================
+   パスワード管理
+   外注先を追加するときはここにエントリーを足すだけ：
+   { pass: "パスワード", name: "表示名" }
+   ===================================================== */
+var USERS = [
+  { pass: "1step2026", name: "管理者" }
+  /* 追加例：
+  ,{ pass: "gaityuu2026", name: "外注先A" }
+  ,{ pass: "partner9999", name: "外注先B" }
+  */
+];
+
+/* ログイン処理 */
+function doLogin() {
+  var input = document.getElementById('login-pass').value;
+  var matched = null;
+  for (var i = 0; i < USERS.length; i++) {
+    if (USERS[i].pass === input) { matched = USERS[i]; break; }
+  }
+  if (!matched) {
+    document.getElementById('login-error').style.display = 'block';
+    document.getElementById('login-pass').value = '';
+    document.getElementById('login-pass').focus();
+    return;
+  }
+  /* ログイン成功 */
+  document.getElementById('view-login').style.display = 'none';
+  document.getElementById('view-form').style.display  = 'block';
+  document.getElementById('f-staff').value            = matched.name;
+  var badge = document.getElementById('logged-user-badge');
+  badge.textContent = 'ログイン中：' + matched.name;
+  badge.style.display = 'block';
+}
+
+/* 写真プレビュー */
+function preview(input) {
+  var box = document.getElementById('prev-' + input.id);
+  box.innerHTML = '';
+  for (var i = 0; i < input.files.length; i++) {
+    var img = document.createElement('img');
+    img.src = URL.createObjectURL(input.files[i]);
+    box.appendChild(img);
+  }
+}
+
+/* フォームの値を取得 */
+function val(id) {
+  var e = document.getElementById(id);
+  return (e && e.value) ? e.value.trim() : '';
+}
+
+/* プレビューから写真HTML */
+function photoHtml(prevId) {
+  var box = document.getElementById(prevId);
+  if (!box || !box.querySelector('img')) {
+    return '<p class="no-photo">（写真なし）</p>';
+  }
+  var h = '<div class="r-photos">';
+  var imgs = box.querySelectorAll('img');
+  for (var i = 0; i < imgs.length; i++) {
+    h += '<img src="' + imgs[i].src + '">';
+  }
+  return h + '</div>';
+}
+
+/* 報告書を生成して画面を切り替える */
+function generateReport() {
+  var proj = val('f-project') || '（案件名未入力）';
+  var cli  = val('f-client')  || '　';
+  var dt   = val('f-date')    || '　';
+  var wt   = val('f-weather') || '　';
+  var tm   = val('f-time')    || '　';
+  var wk   = val('f-workers') || '　';
+  var st   = val('f-staff')   || '　';
+
+  var h = '';
+
+  h += '<h1>' + proj + '</h1>';
+  h += '<p class="r-client">' + cli + ' 御中</p>';
+
+  h += '<div class="r-h2">1. 作業概要</div>';
+  h += '<table>';
+  h += '<tr><th>案件名</th><td>' + proj + '</td></tr>';
+  h += '<tr><th>提出先</th><td>' + cli  + '</td></tr>';
+  h += '<tr><th>作業日</th><td>' + dt   + '</td></tr>';
+  h += '<tr><th>天候 / 気温</th><td>' + wt + '</td></tr>';
+  h += '<tr><th>作業時間帯</th><td>' + tm + '</td></tr>';
+  h += '<tr><th>作業人数</th><td>' + wk  + '</td></tr>';
+  h += '<tr><th>担当者</th><td>' + st   + '</td></tr>';
+  h += '</table>';
+
+  h += '<div class="r-h2">2. エリア別 作業記録</div>';
+  var names = ['①','②','③','④'];
+  var keys  = ['1','2','3','4'];
+  for (var a = 0; a < 4; a++) {
+    var k = keys[a];
+    h += '<div class="r-h3">エリア' + names[a] + '</div>';
+    h += '<b>作業前（Before）</b>' + photoHtml('prev-fi' + k + 'b');
+    h += '<b>作業後（After）</b>'  + photoHtml('prev-fi' + k + 'a');
+    h += '<b>除草剤散布後</b>'     + photoHtml('prev-fi' + k + 'h');
+    h += '<b>所見</b>';
+    h += '<div class="r-notes">' + (val('notes-' + k) || '（所見なし）') + '</div>';
+  }
+
+  h += '<div class="r-h2">3. 全体所見</div>';
+  h += '<div class="r-notes">' + (val('f-overview') || '（記載なし）') + '</div>';
+
+  h += '<div class="r-h2">4. 除草剤使用記録</div>';
+  h += '<b>散布状況写真</b>' + photoHtml('prev-figh');
+  h += '<div class="r-notes">' + (val('f-herbicide') || '（記載なし）') + '</div>';
+
+  h += '<div class="r-h2">5. 次回作業の提案</div>';
+  h += '<b>提案箇所写真</b>' + photoHtml('prev-figp');
+  h += '<div class="r-notes">' + (val('f-proposal') || '（記載なし）') + '</div>';
+
+  h += '<div class="r-h2">6. 備考・連絡事項</div>';
+  h += '<div class="r-notes">' + (val('f-remarks') || '特になし') + '</div>';
+
+  var iu = val('f-icloud');
+  if (iu) {
+    h += '<div style="margin:16px 0;padding:12px;border:1px solid #2e7d45;border-radius:6px;">';
+    h += '<b>詳細写真（iCloud）：</b><br>';
+    h += '<a href="' + iu + '" style="color:#1a5c2a;word-break:break-all;">' + iu + '</a>';
+    h += '</div>';
+  }
+
+  h += '<div style="text-align:right;margin-top:32px;font-size:14px;color:#555;">担当者：' + st + '</div>';
+  h += '<p style="text-align:center;color:#bbb;font-size:13px;margin-top:24px;">以上</p>';
+
+  document.getElementById('view-report').innerHTML = h;
+  document.getElementById('view-form').style.display   = 'none';
+  document.getElementById('view-report').style.display = 'block';
+  document.getElementById('done-banner').style.display = 'block';
+  document.getElementById('back-btn').style.display    = 'block';
+  window.scrollTo(0, 0);
+}
+
+/* 入力画面に戻る */
+function backToForm() {
+  document.getElementById('view-report').style.display = 'none';
+  document.getElementById('done-banner').style.display = 'none';
+  document.getElementById('back-btn').style.display    = 'none';
+  document.getElementById('view-form').style.display   = 'block';
+  window.scrollTo(0, 0);
+}
+
+/* 今日の日付をセット */
+var d = new Date();
+document.getElementById('f-date').value =
+  d.getFullYear() + '-' +
+  ('0' + (d.getMonth() + 1)).slice(-2) + '-' +
+  ('0' + d.getDate()).slice(-2);
+
+/* ===== PWA ホーム画面アイコンを Canvas で生成 ===== */
+(function() {
+  try {
+    var c   = document.createElement('canvas');
+    c.width = 180; c.height = 180;
+    var ctx = c.getContext('2d');
+
+    var r = 36;
+    ctx.fillStyle = '#1a5c2a';
+    ctx.beginPath();
+    ctx.moveTo(r, 0);
+    ctx.lineTo(180 - r, 0);
+    ctx.quadraticCurveTo(180, 0,   180, r);
+    ctx.lineTo(180, 180 - r);
+    ctx.quadraticCurveTo(180, 180, 180 - r, 180);
+    ctx.lineTo(r, 180);
+    ctx.quadraticCurveTo(0, 180,   0, 180 - r);
+    ctx.lineTo(0, r);
+    ctx.quadraticCurveTo(0, 0,     r, 0);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.fillStyle    = '#a8d5b0';
+    ctx.font         = 'bold 80px sans-serif';
+    ctx.textAlign    = 'center';
+    ctx.textBaseline = 'alphabetic';
+    ctx.fillText('草', 90, 110);
+
+    ctx.fillStyle = '#ffffff';
+    ctx.font      = 'bold 26px sans-serif';
+    ctx.fillText('報告書', 90, 158);
+
+    var link = document.getElementById('touch-icon');
+    if (link) link.href = c.toDataURL('image/png');
+  } catch(e) {}
+})();
+</script>
+
+</body>
+</html>

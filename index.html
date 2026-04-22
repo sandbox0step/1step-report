@@ -82,7 +82,16 @@
 
     /* ===== フォームの写真プレビュー ===== */
     .prev { display: flex; flex-wrap: wrap; gap: 8px; margin: 6px 0 10px; }
+    .prev-item { position: relative; display: inline-block; }
     .prev img { width: 120px; height: 120px; object-fit: cover; border: 1px solid #aaa; border-radius: 4px; display: block; }
+    .prev-del {
+      position: absolute; top: 0; right: 0;
+      width: 44px; height: 44px;
+      background: rgba(200,0,0,0.85); color: #fff;
+      border: none; border-radius: 0 4px 0 6px;
+      font-size: 20px; font-weight: bold; line-height: 44px; text-align: center;
+      cursor: pointer; -webkit-appearance: none; padding: 0;
+    }
 
     /* ===== 生成ボタン ===== */
     .gen-btn {
@@ -324,9 +333,19 @@ function preview(input) {
   var box = document.getElementById('prev-' + input.id);
   box.innerHTML = '';
   for (var i = 0; i < input.files.length; i++) {
-    var img = document.createElement('img');
-    img.src = URL.createObjectURL(input.files[i]);
-    box.appendChild(img);
+    (function(src) {
+      var wrap = document.createElement('div');
+      wrap.className = 'prev-item';
+      var img = document.createElement('img');
+      img.src = src;
+      var btn = document.createElement('button');
+      btn.className = 'prev-del';
+      btn.textContent = '×';
+      btn.onclick = function() { wrap.remove(); };
+      wrap.appendChild(img);
+      wrap.appendChild(btn);
+      box.appendChild(wrap);
+    })(URL.createObjectURL(input.files[i]));
   }
 }
 
@@ -339,11 +358,11 @@ function val(id) {
 /* プレビューから写真HTML */
 function photoHtml(prevId) {
   var box = document.getElementById(prevId);
-  if (!box || !box.querySelector('img')) {
+  var imgs = box ? box.querySelectorAll('.prev-item img') : [];
+  if (!imgs.length) {
     return '<p class="no-photo">（写真なし）</p>';
   }
   var h = '<div class="r-photos">';
-  var imgs = box.querySelectorAll('img');
   for (var i = 0; i < imgs.length; i++) {
     h += '<img src="' + imgs[i].src + '">';
   }

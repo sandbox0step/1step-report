@@ -80,6 +80,14 @@
       margin-bottom: 4px;
     }
 
+    /* ===== OCR ===== */
+    #ocr-status {
+      display: none; font-size: 14px; font-weight: bold;
+      padding: 8px 12px; margin: 6px 0;
+      background: #fff8e1; border: 1px solid #f9a825; border-radius: 4px; color: #795548;
+    }
+    .ocr-filled { transition: background 0.3s; background: #fffde7 !important; }
+
     /* ===== エリアヘッダー ===== */
     .area-header {
       display: flex; align-items: center; justify-content: space-between;
@@ -216,8 +224,12 @@
   <h1>除草作業 完了報告書</h1>
 
   <h2>基本情報</h2>
-  <label>案件名</label>
+  <label>案件名（工事名・現場名）</label>
   <input type="text" id="f-project" placeholder="例：○○住宅地 除草管理作業">
+  <label>工番 / 管理番号</label>
+  <input type="text" id="f-jobno" placeholder="例：JOB-2026-001">
+  <label>施工地（所在地）</label>
+  <input type="text" id="f-location" placeholder="例：○○県○○市○○町1-2-3">
   <label>提出先（クライアント名）</label>
   <input type="text" id="f-client" placeholder="例：合同会社 SUNDAY driver &amp; co.">
   <label>作業日</label>
@@ -233,7 +245,8 @@
 
   <h2>看板写真</h2>
   <div id="prev-sign" class="prev"></div>
-  <input type="file" id="sign" accept="image/*" multiple onchange="preview(this)">
+  <input type="file" id="sign" accept="image/*" onchange="onSignUpload(this)">
+  <div id="ocr-status"></div>
 
   <div id="areas-container"></div>
   <button type="button" class="add-area-btn" onclick="addArea()">＋ エリアを追加</button>
@@ -270,6 +283,12 @@
 <!-- ===== JavaScript ===== -->
 <script>
 /* =====================================================
+   Claude API キー設定（看板OCR用）
+   https://console.anthropic.com でAPIキーを取得してここに入力：
+   ===================================================== */
+var CLAUDE_API_KEY = '';
+
+/* =====================================================
    パスワード管理
    外注先を追加するときはここにエントリーを足すだけ：
    { pass: "パスワード", name: "表示名" }
@@ -302,6 +321,98 @@ function doLogin() {
   var badge = document.getElementById('logged-user-badge');
   badge.textContent = 'ログイン中：' + matched.name;
   badge.style.display = 'block';
+}
+
+/* ===== 看板OCR ===== */
+var ocrFilledFields = [];
+
+function onSignUpload(input) {
+  var box = document.getElementById('prev-sign');
+  box.innerHTML = '';
+  if (!input.files.length) return;
+
+  var file = input.files[0];
+  var src  = URL.createObjectURL(file);
+  var wrap = document.createElement('div');
+  wrap.className = 'prev-item';
+  var img = document.createElement('img');
+  img.src = src;
+  var btn = document.createElement('button');
+  btn.className = 'prev-del';
+  btn.textContent = '×';
+  btn.onclick = function() {
+    if (ocrFilledFields.length > 0) {
+      if (confirm('看板OCRで自動入力された項目をクリアしますか？')) clearOcrFields();
+    }
+    wrap.remove();
+  };
+  wrap.appendChild(img);
+  wrap.appendChild(btn);
+  box.appendChild(wrap);
+
+  if (CLAUDE_API_KEY) analyzeSignboard(file);
+}
+
+function clearOcrFields() {
+  ocrFilledFields.forEach(function(id) {
+    var el = document.getElementById(id);
+    if (el) { el.value = ''; el.classList.remove('ocr-filled'); }
+  });
+  ocrFilledFields = [];
+}
+
+function setOcrField(id, value) {
+  var el = document.getElementById(id);
+  if (!el || !value) return;
+  el.value = value;
+  el.classList.add('ocr-filled');
+  ocrFilledFields.push(id);
+  setTimeout(function() { el.classList.remove('ocr-filled'); }, 4000);
+}
+
+async function analyzeSignboard(file) {
+  var st = document.getElementById('ocr-status');
+  st.textContent = '看板を解析中...';
+  st.style.display = 'block';
+  try {
+    var base64 = await new Promise(function(resolve, reject) {
+      var r = new FileReader();
+      r.onload = function(e) { resolve(e.target.result.split(',')[1]); };
+      r.onerror = reject;
+      r.readAsDataURL(file);
+    });
+    var res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': CLAUDE_API_KEY,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-allow-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 512,
+        messages: [{ role: 'user', content: [
+          { type: 'image', source: { type: 'base64', media_type: file.type || 'image/jpeg', data: base64 } },
+          { type: 'text', text: 'この看板写真から以下の情報のみを抽出してください。JSONのみ返してください。\n\n抽出ルール：\n- name: 「工事名」「現場名」「発電所名」などのラベルに続く名称のみ。会社名（株式会社・合同会社など）は含めない。\n- jobno: 「工番」「管理番号」「設備ID」「No.」「ID」などのラベルに続く英数字コード。\n- location: 「施工地」「現場所在地」「設置場所」などのラベルに続く住所のみ。「所有者」「保全管理会社」「施工業者」の住所は絶対に含めない。「支店」「営業所」「本社」を含む行も除外。\n\n見つからない項目はnull。\n必ずこの形式のみ：{"name":"...","jobno":"...","location":"..."}' }
+        ]}]
+      })
+    });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    var data = await res.json();
+    var match = data.content[0].text.match(/\{[\s\S]*\}/);
+    if (!match) throw new Error('解析結果なし');
+    var result = JSON.parse(match[0]);
+    ocrFilledFields = [];
+    if (result.name)     setOcrField('f-project',  result.name);
+    if (result.jobno)    setOcrField('f-jobno',     result.jobno);
+    if (result.location) setOcrField('f-location',  result.location);
+    st.textContent = '✓ 解析完了';
+    setTimeout(function() { st.style.display = 'none'; }, 2500);
+  } catch(e) {
+    st.textContent = '解析失敗: ' + e.message;
+    setTimeout(function() { st.style.display = 'none'; }, 3500);
+  }
 }
 
 /* エリア管理 */
@@ -380,7 +491,9 @@ function photoHtml(prevId) {
 
 /* 報告書を生成して画面を切り替える */
 function generateReport() {
-  var proj = val('f-project') || '（案件名未入力）';
+  var proj = val('f-project')  || '（案件名未入力）';
+  var jobno= val('f-jobno')   || '　';
+  var loc  = val('f-location')|| '　';
   var cli  = val('f-client')  || '　';
   var dt   = val('f-date')    || '　';
   var wt   = val('f-weather') || '　';
@@ -396,6 +509,8 @@ function generateReport() {
   h += '<div class="r-h2">1. 作業概要</div>';
   h += '<table>';
   h += '<tr><th>案件名</th><td>' + proj + '</td></tr>';
+  h += '<tr><th>工番 / 管理番号</th><td>' + jobno + '</td></tr>';
+  h += '<tr><th>施工地</th><td>' + loc  + '</td></tr>';
   h += '<tr><th>提出先</th><td>' + cli  + '</td></tr>';
   h += '<tr><th>作業日</th><td>' + dt   + '</td></tr>';
   h += '<tr><th>天候 / 気温</th><td>' + wt + '</td></tr>';

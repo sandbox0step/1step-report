@@ -328,12 +328,27 @@
 
 
 <!-- ===== 拡大モーダル ===== -->
-<div id="img-modal" onclick="closeModal()" style="position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,0.92);flex-direction:column;align-items:center;justify-content:center;">
-  <div style="position:absolute;top:0;left:0;right:0;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;background:rgba(0,0,0,0.6);">
-    <span style="color:#fff;font-size:13px;line-height:1.4;">📋 写真を長押し→テキストをコピー<br>閉じたら下の欄に貼り付け</span>
-    <button onclick="closeModal()" style="font-size:18px;font-weight:bold;color:#fff;background:rgba(255,255,255,0.2);border:none;border-radius:6px;padding:8px 16px;cursor:pointer;">✕ 閉じる</button>
+<div id="img-modal" style="position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,0.92);flex-direction:column;align-items:center;justify-content:center;">
+  <!-- ヘッダー -->
+  <div style="position:absolute;top:0;left:0;right:0;padding:10px 14px;display:flex;align-items:center;justify-content:space-between;background:rgba(0,0,0,0.7);z-index:2;">
+    <span style="color:#ccc;font-size:12px;line-height:1.5;">文字を長押しで選択 →<br>下のボタンで項目へ振り分け</span>
+    <button onclick="closeModal()" style="font-size:15px;font-weight:bold;color:#fff;background:#e53935;border:none;border-radius:8px;padding:8px 18px;cursor:pointer;white-space:nowrap;">完了 ✕</button>
   </div>
-  <img id="modal-img" src="" style="max-width:100%;max-height:calc(100vh - 80px);object-fit:contain;margin-top:56px;" onclick="event.stopPropagation()">
+
+  <!-- 看板写真 -->
+  <div style="overflow:auto;max-width:100%;max-height:calc(100vh - 130px);margin-top:54px;">
+    <img id="modal-img" src="" style="max-width:100%;display:block;user-select:text;-webkit-user-select:text;">
+  </div>
+
+  <!-- 選択テキスト → 項目振り分けバー（選択時のみ表示） -->
+  <div id="modal-sel-bar" style="display:none;position:absolute;bottom:0;left:0;right:0;background:rgba(20,20,20,0.95);padding:10px 12px 14px;z-index:3;">
+    <div style="color:#aaa;font-size:11px;margin-bottom:6px;">選択中のテキスト：<span id="modal-sel-preview" style="color:#FFE082;font-weight:bold;"></span></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+      <button onclick="sendToField('f-name')"     style="flex:1;min-width:80px;padding:10px 6px;font-size:14px;font-weight:bold;background:#1565C0;color:#fff;border:none;border-radius:8px;cursor:pointer;">📌 名称へ</button>
+      <button onclick="sendToField('f-jobno')"    style="flex:1;min-width:80px;padding:10px 6px;font-size:14px;font-weight:bold;background:#2E7D32;color:#fff;border:none;border-radius:8px;cursor:pointer;">🔢 工番へ</button>
+      <button onclick="sendToField('f-location')" style="flex:1;min-width:80px;padding:10px 6px;font-size:14px;font-weight:bold;background:#6A1B9A;color:#fff;border:none;border-radius:8px;cursor:pointer;">📍 所在地へ</button>
+    </div>
+  </div>
 </div>
 
 <!-- ===== JavaScript ===== -->
@@ -412,16 +427,61 @@ function openModal(src) {
   document.getElementById('modal-img').src = src;
   document.getElementById('img-modal').classList.add('open');
   document.body.style.overflow = 'hidden';
+  document.addEventListener('selectionchange', onModalSelection);
 }
 
 function closeModal() {
+  document.removeEventListener('selectionchange', onModalSelection);
+  hideSelBar();
   document.getElementById('img-modal').classList.remove('open');
   document.body.style.overflow = '';
-  /* 閉じた後にペースト欄へスムーズスクロール */
-  setTimeout(function() {
-    var ta = document.getElementById('sign-paste');
-    if (ta) { ta.scrollIntoView({ behavior: 'smooth', block: 'center' }); ta.focus(); }
-  }, 150);
+}
+
+/* テキスト選択を監視してバーを表示／非表示 */
+function onModalSelection() {
+  var modal = document.getElementById('img-modal');
+  if (!modal.classList.contains('open')) return;
+  var sel = window.getSelection();
+  var txt = sel ? sel.toString().trim() : '';
+  if (txt.length > 0) {
+    var preview = txt.length > 24 ? txt.substring(0, 24) + '…' : txt;
+    document.getElementById('modal-sel-preview').textContent = preview;
+    document.getElementById('modal-sel-bar').style.display = 'block';
+  } else {
+    hideSelBar();
+  }
+}
+
+function hideSelBar() {
+  document.getElementById('modal-sel-bar').style.display = 'none';
+  document.getElementById('modal-sel-preview').textContent = '';
+}
+
+/* 選択テキストを指定フィールドへ送る */
+function sendToField(fieldId) {
+  var sel = window.getSelection();
+  var raw = sel ? sel.toString() : '';
+  /* 余分な空白・改行を整理 */
+  var txt = raw.replace(/[\r\n]+/g, ' ').replace(/\s{2,}/g, ' ').trim();
+  if (!txt) return;
+
+  /* 矛盾チェック（軽い警告のみ、ブロックしない） */
+  if (fieldId === 'f-name' && /^(東京都|北海道|(?:大阪|京都)府|.{2,3}県|[市区町村])/.test(txt)) {
+    console.log('Note: 住所らしい文字列が名称へセットされました: ' + txt);
+  }
+  if (fieldId === 'f-location' && /発電所$/.test(txt)) {
+    console.log('Note: 発電所で終わる文字列が所在地へセットされました: ' + txt);
+  }
+
+  setField(fieldId, txt);
+  console.log('sendToField: ' + fieldId + ' ← "' + txt + '"');
+
+  /* セット完了フィードバック */
+  var labels = { 'f-name': '名称', 'f-jobno': '工番', 'f-location': '所在地' };
+  var prev = document.getElementById('modal-sel-preview');
+  prev.textContent = '✅ ' + labels[fieldId] + 'へ反映しました！';
+  if (sel) sel.removeAllRanges();
+  setTimeout(function() { hideSelBar(); }, 1200);
 }
 
 /* 現場スペック＋ペーストエリアを全クリア＋localStorage削除 */

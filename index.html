@@ -80,13 +80,48 @@
       margin-bottom: 4px;
     }
 
-    /* ===== OCR ===== */
-    #ocr-status {
-      display: none; font-size: 14px; font-weight: bold;
-      padding: 8px 12px; margin: 6px 0;
-      background: #fff8e1; border: 1px solid #f9a825; border-radius: 4px; color: #795548;
+    /* ===== 看板写真タップヒント ===== */
+    .sign-wrap { position: relative; display: inline-block; cursor: pointer; }
+    .sign-wrap .tap-hint {
+      position: absolute; bottom: 0; left: 0; right: 0;
+      background: rgba(0,0,0,0.55); color: #fff;
+      font-size: 11px; text-align: center; padding: 4px 2px;
+      border-radius: 0 0 4px 4px; pointer-events: none;
     }
-    .ocr-filled { transition: background 0.3s; background: #fffde7 !important; }
+    #img-modal { display: none; }
+    #img-modal.open { display: flex; }
+
+    /* ===== 看板テキスト貼り付けエリア ===== */
+    .paste-box {
+      border: 2px dashed #f9a825; border-radius: 8px;
+      padding: 12px 14px; margin: 10px 0 4px; background: #fffdf0;
+    }
+    .paste-box textarea {
+      min-height: 90px; font-size: 14px; background: #fff;
+      border-color: #ddd; margin-top: 4px;
+    }
+    .parse-btn {
+      display: block; width: 100%;
+      font-size: 15px; font-weight: bold;
+      padding: 12px; margin-top: 8px;
+      background: #f9a825; color: #fff;
+      border: none; border-radius: 6px;
+      cursor: pointer; -webkit-appearance: none; box-sizing: border-box;
+    }
+    .field-highlight { background: #fffde7 !important; transition: background 0.3s; }
+
+    /* ===== 現場スペックグループ ===== */
+    .spec-group {
+      border: 2px solid #2e7d45; border-radius: 8px;
+      padding: 12px 14px; margin: 8px 0 16px;
+      background: #f4fbf6;
+    }
+    .spec-group-title {
+      font-size: 13px; font-weight: bold; color: #2e7d45;
+      margin: 0 0 8px; letter-spacing: 0.05em;
+    }
+    .spec-group label { margin-top: 8px; }
+    .spec-group label:first-of-type { margin-top: 0; }
 
     /* ===== エリアヘッダー ===== */
     .area-header {
@@ -224,12 +259,19 @@
   <h1>除草作業 完了報告書</h1>
 
   <h2>基本情報</h2>
-  <label>案件名（工事名・現場名）</label>
+  <label>案件名</label>
   <input type="text" id="f-project" placeholder="例：○○住宅地 除草管理作業">
-  <label>工番 / 管理番号</label>
-  <input type="text" id="f-jobno" placeholder="例：JOB-2026-001">
-  <label>施工地（所在地）</label>
-  <input type="text" id="f-location" placeholder="例：○○県○○市○○町1-2-3">
+
+  <div class="spec-group">
+    <p class="spec-group-title">▼ 現場スペック（看板OCRで自動入力）</p>
+    <label>① 名称（現場名称）</label>
+    <input type="text" id="f-name" placeholder="例：○○太陽光発電所">
+    <label>② 工番（設備ID / 管理番号）</label>
+    <input type="text" id="f-jobno" placeholder="例：JOB-2026-001">
+    <label>③ 所在地（施工地・現場所在地）</label>
+    <input type="text" id="f-location" placeholder="例：○○県○○市○○町1-2-3">
+  </div>
+
   <label>提出先（クライアント名）</label>
   <input type="text" id="f-client" placeholder="例：合同会社 SUNDAY driver &amp; co.">
   <label>作業日</label>
@@ -246,7 +288,12 @@
   <h2>看板写真</h2>
   <div id="prev-sign" class="prev"></div>
   <input type="file" id="sign" accept="image/*" onchange="onSignUpload(this)">
-  <div id="ocr-status"></div>
+
+  <div class="paste-box">
+    <label style="margin:0 0 4px;">看板の文字をここに貼り付け</label>
+    <textarea id="sign-paste" placeholder="スマホのテキスト認識でコピーした文字をそのまま貼り付けてください..." onpaste="setTimeout(parsePastedText, 80)" onchange="parsePastedText()"></textarea>
+    <button type="button" class="parse-btn" onclick="parsePastedText()">↓ 名称・工番・所在地に自動振り分け</button>
+  </div>
 
   <div id="areas-container"></div>
   <button type="button" class="add-area-btn" onclick="addArea()">＋ エリアを追加</button>
@@ -280,14 +327,17 @@
 <div id="view-report"></div>
 
 
+<!-- ===== 拡大モーダル ===== -->
+<div id="img-modal" onclick="closeModal()" style="position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,0.92);flex-direction:column;align-items:center;justify-content:center;">
+  <div style="position:absolute;top:0;left:0;right:0;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;background:rgba(0,0,0,0.6);">
+    <span style="color:#fff;font-size:13px;line-height:1.4;">📋 写真を長押し→テキストをコピー<br>閉じたら下の欄に貼り付け</span>
+    <button onclick="closeModal()" style="font-size:18px;font-weight:bold;color:#fff;background:rgba(255,255,255,0.2);border:none;border-radius:6px;padding:8px 16px;cursor:pointer;">✕ 閉じる</button>
+  </div>
+  <img id="modal-img" src="" style="max-width:100%;max-height:calc(100vh - 80px);object-fit:contain;margin-top:56px;" onclick="event.stopPropagation()">
+</div>
+
 <!-- ===== JavaScript ===== -->
 <script>
-/* =====================================================
-   Claude API キー設定（看板OCR用）
-   https://console.anthropic.com でAPIキーを取得してここに入力：
-   ===================================================== */
-var CLAUDE_API_KEY = '';
-
 /* =====================================================
    パスワード管理
    外注先を追加するときはここにエントリーを足すだけ：
@@ -321,98 +371,298 @@ function doLogin() {
   var badge = document.getElementById('logged-user-badge');
   badge.textContent = 'ログイン中：' + matched.name;
   badge.style.display = 'block';
+  initLocalStorage();
 }
 
-/* ===== 看板OCR ===== */
-var ocrFilledFields = [];
-
+/* ===== 看板写真（拡大モーダル対応） ===== */
 function onSignUpload(input) {
   var box = document.getElementById('prev-sign');
   box.innerHTML = '';
   if (!input.files.length) return;
 
-  var file = input.files[0];
-  var src  = URL.createObjectURL(file);
+  var src  = URL.createObjectURL(input.files[0]);
   var wrap = document.createElement('div');
-  wrap.className = 'prev-item';
+  wrap.className = 'prev-item sign-wrap';
+
   var img = document.createElement('img');
   img.src = src;
+  img.title = 'タップして拡大';
+  img.onclick = function() { openModal(src); };
+
+  var hint = document.createElement('div');
+  hint.className = 'tap-hint';
+  hint.textContent = '🔍 タップして拡大・文字コピー';
+
   var btn = document.createElement('button');
   btn.className = 'prev-del';
   btn.textContent = '×';
   btn.onclick = function() {
-    if (ocrFilledFields.length > 0) {
-      if (confirm('看板OCRで自動入力された項目をクリアしますか？')) clearOcrFields();
-    }
+    if (!confirm('リセットしてよろしいですか？\n看板写真と現場スペックの入力内容をすべて消去します。')) return;
     wrap.remove();
+    resetSiteFields();
   };
+
   wrap.appendChild(img);
+  wrap.appendChild(hint);
   wrap.appendChild(btn);
   box.appendChild(wrap);
-
-  if (CLAUDE_API_KEY) analyzeSignboard(file);
 }
 
-function clearOcrFields() {
-  ocrFilledFields.forEach(function(id) {
+function openModal(src) {
+  document.getElementById('modal-img').src = src;
+  document.getElementById('img-modal').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeModal() {
+  document.getElementById('img-modal').classList.remove('open');
+  document.body.style.overflow = '';
+  /* 閉じた後にペースト欄へスムーズスクロール */
+  setTimeout(function() {
+    var ta = document.getElementById('sign-paste');
+    if (ta) { ta.scrollIntoView({ behavior: 'smooth', block: 'center' }); ta.focus(); }
+  }, 150);
+}
+
+/* 現場スペック＋ペーストエリアを全クリア＋localStorage削除 */
+function resetSiteFields() {
+  ['f-name', 'f-jobno', 'f-location'].forEach(function(id) {
     var el = document.getElementById(id);
-    if (el) { el.value = ''; el.classList.remove('ocr-filled'); }
+    if (el) { el.value = ''; el.classList.remove('field-highlight'); }
   });
-  ocrFilledFields = [];
+  var sp = document.getElementById('sign-paste');
+  if (sp) sp.value = '';
+  localStorage.removeItem('site_name');
+  localStorage.removeItem('site_jobno');
+  localStorage.removeItem('site_location');
 }
 
-function setOcrField(id, value) {
+/* ===== テキスト貼り付け → 自動振り分け ===== */
+
+function normalizeStr(str) {
+  return str
+    .replace(/[Ａ-Ｚａ-ｚ０-９！-～]/g, function(c) { return String.fromCharCode(c.charCodeAt(0) - 0xFEE0); })
+    .replace(/　/g, ' ').replace(/：/g, ':').replace(/（/g, '(').replace(/）/g, ')');
+}
+
+function extractSiteInfo(rawText) {
+  var text  = normalizeStr(rawText);
+  var lines = text.split('\n').map(function(l) { return l.trim(); }).filter(Boolean);
+
+  var companyRe   = /株式会社|有限会社|合同会社|支店|営業所|本社|所有者|保全管理|施工業者/;
+  var nameExclude = /株式会社|有限会社|合同会社|支店|営業所|様|殿|御中|所有者|保全管理|施工業者/;
+  var addressRe   = /[市区町村郡]|番地|丁目|[0-9]+番[0-9]*号/;
+  /* 都道府県で「始まる」行を判定する正規表現（先頭一致） */
+  var prefStart   = /^(東京都|北海道|(?:大阪|京都)府|.{2,3}県)/;
+  var allLabels   = /施工地|所在地|設置場所|工事場所|現場住所|住所|工事名|現場名|発電所名|施設名|名称|工番|管理番号|設備.?ID|No\.|№|番号/;
+
+  var result = { name: null, jobno: null, location: null };
+
+  console.log('Parse: start (' + lines.length + ' lines)');
+  lines.forEach(function(l, i) { console.log('  [' + i + '] ' + l); });
+
+  function valueAfterLabel(labelRe, excludeRe) {
+    for (var i = 0; i < lines.length; i++) {
+      var line = lines[i];
+      if (!labelRe.test(line)) continue;
+      if (excludeRe && excludeRe.test(line)) continue;
+      var after = line.replace(labelRe, '').replace(/^[\s：:=　\t]+/, '').trim();
+      var stop  = after.search(allLabels);
+      if (stop > 0) after = after.substring(0, stop).trim();
+      if (after.length > 0 && !(excludeRe && excludeRe.test(after))) {
+        console.log('  Extract: same-line "' + line + '" → "' + after + '"');
+        return after;
+      }
+      var next = lines[i + 1] || '';
+      if (next && !allLabels.test(next) && !(excludeRe && excludeRe.test(next))) {
+        console.log('  Extract: next-line "' + line + '" → "' + next + '"');
+        return next;
+      }
+    }
+    return null;
+  }
+
+  /* ===== 名称 ===== */
+  /* 優先①: 末尾が「発電所」で終わる行 */
+  for (var i = 0; i < lines.length; i++) {
+    if (/発電所$/.test(lines[i]) && !nameExclude.test(lines[i])) {
+      result.name = lines[i];
+      console.log('Name: ' + result.name + ' (Reason: 末尾が発電所なので名称にセットしました)');
+      break;
+    }
+  }
+  /* 優先②: ラベル直後の値 */
+  if (!result.name) {
+    var nameRaw = valueAfterLabel(/工事名|現場名|発電所名|施設名|名称/, nameExclude);
+    if (nameRaw && !nameExclude.test(nameRaw)) {
+      result.name = nameRaw;
+      console.log('Name: ' + result.name + ' (Reason: ラベル直後の値)');
+    }
+  }
+  /* 優先③: スコアリングフォールバック */
+  if (!result.name) {
+    var nameCands = lines.filter(function(l) {
+      return !nameExclude.test(l) && !companyRe.test(l) &&
+             !addressRe.test(l)   && !prefStart.test(l) &&
+             !(allLabels.test(l) && l.replace(allLabels, '').trim() === '') &&
+             l.length > 2;
+    });
+    if (nameCands.length > 0) {
+      nameCands.sort(function(a, b) {
+        function sc(s) {
+          var v = s.length;
+          if (/発電所|太陽光|メガソーラー|PV/.test(s)) v += 100;
+          if (/工事/.test(s)) v += 50;
+          return v;
+        }
+        return sc(b) - sc(a);
+      });
+      result.name = nameCands[0];
+      console.log('Name: ' + result.name + ' (Reason: スコア最高行)');
+    }
+  }
+
+  /* ===== 工番① キーワードベース ===== */
+  var jobRaw = valueAfterLabel(/工番|管理番号|設備.?ID|No\.|№|番号/);
+  if (jobRaw) {
+    var jCode = jobRaw.match(/^([A-Za-z0-9][A-Za-z0-9\-\/]*)/);
+    result.jobno = jCode ? jCode[1] : jobRaw;
+    console.log('JobNo: ' + result.jobno + ' (Reason: ラベル直後の英数字)');
+  }
+  /* ===== 工番② 日本語を含まない英数字+記号の塊をスキャン ===== */
+  if (!result.jobno) {
+    var dateRe = /^\d{4}[-\/]\d{1,2}[-\/]\d{1,2}$/;
+    var phoneRe = /^\d{2,4}-\d{3,4}-\d{4}$/;
+    var jpRe   = /[^\x00-\x7F\-\/]/; /* 日本語文字を含む判定 */
+    /* 行全体が日本語なしかつコード形式 */
+    for (var ji = 0; ji < lines.length; ji++) {
+      var ln = lines[ji];
+      if (jpRe.test(ln)) continue; /* 日本語を含む行はスキップ */
+      var codeRe = /([A-Za-z0-9][A-Za-z0-9\-\/]{2,})/g;
+      var found; codeRe.lastIndex = 0;
+      while ((found = codeRe.exec(ln)) !== null) {
+        var c = found[1];
+        if (!dateRe.test(c) && !phoneRe.test(c)) {
+          result.jobno = c;
+          console.log('JobNo: ' + c + ' (Reason: 日本語を含まない英数字コード from "' + ln + '")');
+          break;
+        }
+      }
+      if (result.jobno) break;
+    }
+  }
+  /* ===== 工番③ 全行から英数混在パターンをスキャン（最終手段） ===== */
+  if (!result.jobno) {
+    var dateRe2  = /^\d{4}[-\/]\d{1,2}[-\/]\d{1,2}$/;
+    var phoneRe2 = /^\d{2,4}-\d{3,4}-\d{4}$/;
+    var codeRe2  = /\b([A-Za-z]{1,8}[-\/]?[0-9]{2,}[A-Za-z0-9\-\/]*|[0-9]{2,}[-\/][A-Za-z][A-Za-z0-9\-\/]*|[A-Za-z]{2,}[0-9]{2,}[A-Za-z0-9\-\/]*)\b/g;
+    outer:
+    for (var li = 0; li < lines.length; li++) {
+      var f2; codeRe2.lastIndex = 0;
+      while ((f2 = codeRe2.exec(lines[li])) !== null) {
+        var c2 = f2[1];
+        if (c2.length >= 3 && !dateRe2.test(c2) && !phoneRe2.test(c2)) {
+          result.jobno = c2;
+          console.log('JobNo: ' + c2 + ' (Reason: 英数混在コード from "' + lines[li] + '")');
+          break outer;
+        }
+      }
+    }
+  }
+
+  /* ===== 所在地① ラベルマッチ ===== */
+  var locRaw = valueAfterLabel(/施工地|所在地|設置場所|工事場所|現場住所|住所/, companyRe);
+  if (locRaw && !companyRe.test(locRaw) && locRaw !== result.name) {
+    result.location = locRaw;
+    console.log('Location: ' + result.location + ' (Reason: ラベル直後の値)');
+  }
+  /* ===== 所在地② 「県から始まる」＋市町村が続く行を優先 ===== */
+  if (!result.location) {
+    var locCandWithAddr = null, locCandPrefOnly = null;
+    for (var k = 0; k < lines.length; k++) {
+      var kl = lines[k];
+      if (!prefStart.test(kl) || companyRe.test(kl) || kl === result.name) continue;
+      if (addressRe.test(kl)) {
+        locCandWithAddr = kl; break; /* 市町村まで含む → 即採用 */
+      } else if (!locCandPrefOnly) {
+        locCandPrefOnly = kl; /* 県名のみ → 候補として保持 */
+      }
+    }
+    var chosen = locCandWithAddr || locCandPrefOnly;
+    if (chosen) {
+      result.location = chosen;
+      var reason = locCandWithAddr ? '県から始まり市町村名が続くので所在地にセットしました' : '県から始まるので所在地にセットしました';
+      console.log('Location: ' + result.location + ' (Reason: ' + reason + ')');
+    }
+  }
+  /* ===== 所在地③ 市区町村・番地フォールバック ===== */
+  if (!result.location) {
+    for (var m = 0; m < lines.length; m++) {
+      var al = lines[m];
+      if (addressRe.test(al) && !companyRe.test(al) && al !== result.name) {
+        result.location = al;
+        console.log('Location: ' + result.location + ' (Reason: 市/町/番地を含む行)');
+        break;
+      }
+    }
+  }
+
+  console.log('Result: ' + JSON.stringify(result));
+  return result;
+}
+
+function setField(id, value) {
   var el = document.getElementById(id);
   if (!el || !value) return;
   el.value = value;
-  el.classList.add('ocr-filled');
-  ocrFilledFields.push(id);
-  setTimeout(function() { el.classList.remove('ocr-filled'); }, 4000);
+  el.dispatchEvent(new Event('input'));
+  el.classList.add('field-highlight');
+  setTimeout(function() { el.classList.remove('field-highlight'); }, 2500);
 }
 
-async function analyzeSignboard(file) {
-  var st = document.getElementById('ocr-status');
-  st.textContent = '看板を解析中...';
-  st.style.display = 'block';
-  try {
-    var base64 = await new Promise(function(resolve, reject) {
-      var r = new FileReader();
-      r.onload = function(e) { resolve(e.target.result.split(',')[1]); };
-      r.onerror = reject;
-      r.readAsDataURL(file);
-    });
-    var res = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': CLAUDE_API_KEY,
-        'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-allow-browser-access': 'true'
-      },
-      body: JSON.stringify({
-        model: 'claude-haiku-4-5-20251001',
-        max_tokens: 512,
-        messages: [{ role: 'user', content: [
-          { type: 'image', source: { type: 'base64', media_type: file.type || 'image/jpeg', data: base64 } },
-          { type: 'text', text: 'この看板写真から以下の情報のみを抽出してください。JSONのみ返してください。\n\n抽出ルール：\n- name: 「工事名」「現場名」「発電所名」などのラベルに続く名称のみ。会社名（株式会社・合同会社など）は含めない。\n- jobno: 「工番」「管理番号」「設備ID」「No.」「ID」などのラベルに続く英数字コード。\n- location: 「施工地」「現場所在地」「設置場所」などのラベルに続く住所のみ。「所有者」「保全管理会社」「施工業者」の住所は絶対に含めない。「支店」「営業所」「本社」を含む行も除外。\n\n見つからない項目はnull。\n必ずこの形式のみ：{"name":"...","jobno":"...","location":"..."}' }
-        ]}]
-      })
-    });
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-    var data = await res.json();
-    var match = data.content[0].text.match(/\{[\s\S]*\}/);
-    if (!match) throw new Error('解析結果なし');
-    var result = JSON.parse(match[0]);
-    ocrFilledFields = [];
-    if (result.name)     setOcrField('f-project',  result.name);
-    if (result.jobno)    setOcrField('f-jobno',     result.jobno);
-    if (result.location) setOcrField('f-location',  result.location);
-    st.textContent = '✓ 解析完了';
-    setTimeout(function() { st.style.display = 'none'; }, 2500);
-  } catch(e) {
-    st.textContent = '解析失敗: ' + e.message;
-    setTimeout(function() { st.style.display = 'none'; }, 3500);
+function parsePastedText() {
+  var ta   = document.getElementById('sign-paste');
+  var text = ta.value;
+  if (!text.trim() || text.indexOf('✅') === 0 || text.indexOf('⚠️') === 0) return;
+
+  var result = extractSiteInfo(text);
+  var filled = [], missing = [];
+
+  if (result.name)     { setField('f-name',     result.name);     filled.push('名称'); }
+  else                 { missing.push('名称'); }
+  if (result.jobno)    { setField('f-jobno',     result.jobno);    filled.push('工番'); }
+  else                 { missing.push('工番'); }
+  if (result.location) { setField('f-location',  result.location); filled.push('所在地'); }
+  else                 { missing.push('所在地'); }
+
+  if (filled.length > 0 && missing.length === 0) {
+    ta.value = '✅ ' + filled.join('・') + ' を反映しました';
+  } else if (filled.length > 0) {
+    ta.value = '✅ ' + filled.join('・') + ' を反映 ／ ⚠️ ' + missing.join('・') + ' は手入力してください';
+  } else {
+    ta.value = '⚠️ 自動判別できませんでした。各欄を手入力してください。';
   }
+  setTimeout(function() {
+    var v = ta.value;
+    if (v.indexOf('✅') === 0 || v.indexOf('⚠️') === 0) ta.value = '';
+  }, 4000);
+}
+
+/* ===== localStorage 自動保存・読み込み ===== */
+var SAVE_MAP = { 'f-name': 'site_name', 'f-jobno': 'site_jobno', 'f-location': 'site_location' };
+
+function initLocalStorage() {
+  Object.keys(SAVE_MAP).forEach(function(id) {
+    var el  = document.getElementById(id);
+    var key = SAVE_MAP[id];
+    var saved = localStorage.getItem(key);
+    if (saved && el) el.value = saved;
+    if (el) {
+      el.addEventListener('input', function() {
+        localStorage.setItem(key, el.value);
+      });
+    }
+  });
 }
 
 /* エリア管理 */
@@ -489,9 +739,62 @@ function photoHtml(prevId) {
   return h + '</div>';
 }
 
+/* ===== データ一元管理：報告書データ構造 ===== */
+function buildReportData() {
+  var areaBlocks = document.querySelectorAll('#areas-container [id^="area-block-"]');
+  var areas = [];
+  areaBlocks.forEach(function(block) {
+    var k = block.id.replace('area-block-', '');
+    areas.push({
+      areaId:       k,
+      photosBefore: document.querySelectorAll('#prev-fi' + k + 'b .prev-item img').length,
+      photosAfter:  document.querySelectorAll('#prev-fi' + k + 'a .prev-item img').length,
+      photosHerb:   document.querySelectorAll('#prev-fi' + k + 'h .prev-item img').length,
+      notes:        val('notes-' + k)
+    });
+  });
+  return {
+    generatedAt: new Date().toISOString(),
+    project:     val('f-project'),
+    siteName:    val('f-name'),
+    jobNo:       val('f-jobno'),
+    location:    val('f-location'),
+    client:      val('f-client'),
+    date:        val('f-date'),
+    weather:     val('f-weather'),
+    workTime:    val('f-time'),
+    workers:     val('f-workers'),
+    staff:       val('f-staff'),
+    areas:       areas,
+    overview:    val('f-overview'),
+    herbicide:   val('f-herbicide'),
+    proposal:    val('f-proposal'),
+    remarks:     val('f-remarks')
+  };
+}
+
+/* ===== Google Sheets 送信（土台） =====
+   本番化する際は SHEET_URL にGASのデプロイURLを設定する。
+   GAS側: doPost(e) { var d = JSON.parse(e.postData.contents); ... }
+   ================================================= */
+function sendToSpreadsheet(data) {
+  var SHEET_URL = ''; /* ← GASデプロイURLをここに貼り付け */
+  console.log('[Sheets送信データ]', JSON.stringify(data, null, 2));
+  if (!SHEET_URL) return;
+  fetch(SHEET_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain' },
+    body: JSON.stringify(data)
+  }).catch(function(e) { console.warn('[Sheets送信失敗]', e); });
+}
+
 /* 報告書を生成して画面を切り替える */
 function generateReport() {
+  var reportData = buildReportData();
+  sendToSpreadsheet(reportData);
+
   var proj = val('f-project')  || '（案件名未入力）';
+  var name = val('f-name')    || '　';
   var jobno= val('f-jobno')   || '　';
   var loc  = val('f-location')|| '　';
   var cli  = val('f-client')  || '　';
@@ -509,8 +812,9 @@ function generateReport() {
   h += '<div class="r-h2">1. 作業概要</div>';
   h += '<table>';
   h += '<tr><th>案件名</th><td>' + proj + '</td></tr>';
+  h += '<tr><th>名称（現場名称）</th><td>' + name + '</td></tr>';
   h += '<tr><th>工番 / 管理番号</th><td>' + jobno + '</td></tr>';
-  h += '<tr><th>施工地</th><td>' + loc  + '</td></tr>';
+  h += '<tr><th>所在地</th><td>' + loc  + '</td></tr>';
   h += '<tr><th>提出先</th><td>' + cli  + '</td></tr>';
   h += '<tr><th>作業日</th><td>' + dt   + '</td></tr>';
   h += '<tr><th>天候 / 気温</th><td>' + wt + '</td></tr>';

@@ -80,6 +80,27 @@
       margin-bottom: 4px;
     }
 
+    /* ===== エリアヘッダー ===== */
+    .area-header {
+      display: flex; align-items: center; justify-content: space-between;
+      background: #2e7d45; color: #fff; padding: 8px 12px; margin: 20px -12px 12px;
+    }
+    .area-header span { font-size: 17px; font-weight: bold; }
+    .area-del-btn {
+      font-size: 13px; padding: 4px 10px;
+      background: #fff; color: #c0392b;
+      border: 1px solid #c0392b; border-radius: 4px;
+      cursor: pointer; -webkit-appearance: none; white-space: nowrap;
+    }
+    .add-area-btn {
+      display: block; width: 100%;
+      font-size: 17px; font-weight: bold;
+      padding: 16px; margin: 8px 0 24px;
+      background: #e8f5ec; color: #1a5c2a;
+      border: 2px dashed #2e7d45; border-radius: 8px;
+      cursor: pointer; -webkit-appearance: none; box-sizing: border-box;
+    }
+
     /* ===== フォームの写真プレビュー ===== */
     .prev { display: flex; flex-wrap: wrap; gap: 8px; margin: 6px 0 10px; }
     .prev-item { position: relative; display: inline-block; }
@@ -210,57 +231,12 @@
   <label>担当者名（ログイン名）</label>
   <input type="text" id="f-staff" placeholder="例：山田 太郎" readonly style="background:#f0f8f0;">
 
-  <h2>エリア①</h2>
-  <h3>草刈り作業前（Before）</h3>
-  <div id="prev-fi1b" class="prev"></div>
-  <input type="file" id="fi1b" accept="image/*" multiple onchange="preview(this)">
-  <h3>草刈り作業後（After）</h3>
-  <div id="prev-fi1a" class="prev"></div>
-  <input type="file" id="fi1a" accept="image/*" multiple onchange="preview(this)">
-  <h3>除草剤散布後（現状）</h3>
-  <div id="prev-fi1h" class="prev"></div>
-  <input type="file" id="fi1h" accept="image/*" multiple onchange="preview(this)">
-  <label>所見・気づいた点</label>
-  <textarea id="notes-1" placeholder="エリア①で気づいた点を記入してください"></textarea>
+  <h2>看板写真</h2>
+  <div id="prev-sign" class="prev"></div>
+  <input type="file" id="sign" accept="image/*" multiple onchange="preview(this)">
 
-  <h2>エリア②</h2>
-  <h3>草刈り作業前（Before）</h3>
-  <div id="prev-fi2b" class="prev"></div>
-  <input type="file" id="fi2b" accept="image/*" multiple onchange="preview(this)">
-  <h3>草刈り作業後（After）</h3>
-  <div id="prev-fi2a" class="prev"></div>
-  <input type="file" id="fi2a" accept="image/*" multiple onchange="preview(this)">
-  <h3>除草剤散布後（現状）</h3>
-  <div id="prev-fi2h" class="prev"></div>
-  <input type="file" id="fi2h" accept="image/*" multiple onchange="preview(this)">
-  <label>所見・気づいた点</label>
-  <textarea id="notes-2" placeholder="エリア②で気づいた点を記入してください"></textarea>
-
-  <h2>エリア③</h2>
-  <h3>草刈り作業前（Before）</h3>
-  <div id="prev-fi3b" class="prev"></div>
-  <input type="file" id="fi3b" accept="image/*" multiple onchange="preview(this)">
-  <h3>草刈り作業後（After）</h3>
-  <div id="prev-fi3a" class="prev"></div>
-  <input type="file" id="fi3a" accept="image/*" multiple onchange="preview(this)">
-  <h3>除草剤散布後（現状）</h3>
-  <div id="prev-fi3h" class="prev"></div>
-  <input type="file" id="fi3h" accept="image/*" multiple onchange="preview(this)">
-  <label>所見・気づいた点</label>
-  <textarea id="notes-3" placeholder="エリア③で気づいた点を記入してください"></textarea>
-
-  <h2>エリア④</h2>
-  <h3>草刈り作業前（Before）</h3>
-  <div id="prev-fi4b" class="prev"></div>
-  <input type="file" id="fi4b" accept="image/*" multiple onchange="preview(this)">
-  <h3>草刈り作業後（After）</h3>
-  <div id="prev-fi4a" class="prev"></div>
-  <input type="file" id="fi4a" accept="image/*" multiple onchange="preview(this)">
-  <h3>除草剤散布後（現状）</h3>
-  <div id="prev-fi4h" class="prev"></div>
-  <input type="file" id="fi4h" accept="image/*" multiple onchange="preview(this)">
-  <label>所見・気づいた点</label>
-  <textarea id="notes-4" placeholder="エリア④で気づいた点を記入してください"></textarea>
+  <div id="areas-container"></div>
+  <button type="button" class="add-area-btn" onclick="addArea()">＋ エリアを追加</button>
 
   <h2>全体所見 / 除草剤 / 提案 / 備考</h2>
   <label>全体所見・気づいた点</label>
@@ -326,6 +302,39 @@ function doLogin() {
   var badge = document.getElementById('logged-user-badge');
   badge.textContent = 'ログイン中：' + matched.name;
   badge.style.display = 'block';
+}
+
+/* エリア管理 */
+var areaCounter = 0;
+
+function addArea() {
+  areaCounter++;
+  var id = areaCounter;
+  var container = document.getElementById('areas-container');
+  var div = document.createElement('div');
+  div.id = 'area-block-' + id;
+  div.innerHTML =
+    '<div class="area-header">' +
+      '<span>エリア' + id + '</span>' +
+      '<button type="button" class="area-del-btn" onclick="deleteArea(' + id + ')">このエリアを削除</button>' +
+    '</div>' +
+    '<h3>草刈り作業前（Before）</h3>' +
+    '<div id="prev-fi' + id + 'b" class="prev"></div>' +
+    '<input type="file" id="fi' + id + 'b" accept="image/*" multiple onchange="preview(this)">' +
+    '<h3>草刈り作業後（After）</h3>' +
+    '<div id="prev-fi' + id + 'a" class="prev"></div>' +
+    '<input type="file" id="fi' + id + 'a" accept="image/*" multiple onchange="preview(this)">' +
+    '<h3>除草剤散布後（現状）</h3>' +
+    '<div id="prev-fi' + id + 'h" class="prev"></div>' +
+    '<input type="file" id="fi' + id + 'h" accept="image/*" multiple onchange="preview(this)">' +
+    '<label>所見・気づいた点</label>' +
+    '<textarea id="notes-' + id + '" placeholder="エリア' + id + 'で気づいた点を記入してください"></textarea>';
+  container.appendChild(div);
+}
+
+function deleteArea(id) {
+  var el = document.getElementById('area-block-' + id);
+  if (el) el.remove();
 }
 
 /* 写真プレビュー */
@@ -395,31 +404,36 @@ function generateReport() {
   h += '<tr><th>担当者</th><td>' + st   + '</td></tr>';
   h += '</table>';
 
-  h += '<div class="r-h2">2. エリア別 作業記録</div>';
-  var names = ['①','②','③','④'];
-  var keys  = ['1','2','3','4'];
-  for (var a = 0; a < 4; a++) {
-    var k = keys[a];
-    h += '<div class="r-h3">エリア' + names[a] + '</div>';
+  h += '<div class="r-h2">2. 看板写真</div>';
+  h += photoHtml('prev-sign');
+
+  h += '<div class="r-h2">3. エリア別 作業記録</div>';
+  var areaBlocks = document.querySelectorAll('#areas-container [id^="area-block-"]');
+  for (var a = 0; a < areaBlocks.length; a++) {
+    var k = areaBlocks[a].id.replace('area-block-', '');
+    h += '<div class="r-h3">エリア' + k + '</div>';
     h += '<b>作業前（Before）</b>' + photoHtml('prev-fi' + k + 'b');
     h += '<b>作業後（After）</b>'  + photoHtml('prev-fi' + k + 'a');
     h += '<b>除草剤散布後</b>'     + photoHtml('prev-fi' + k + 'h');
     h += '<b>所見</b>';
     h += '<div class="r-notes">' + (val('notes-' + k) || '（所見なし）') + '</div>';
   }
+  if (!areaBlocks.length) {
+    h += '<p class="no-photo">（エリアなし）</p>';
+  }
 
-  h += '<div class="r-h2">3. 全体所見</div>';
+  h += '<div class="r-h2">4. 全体所見</div>';
   h += '<div class="r-notes">' + (val('f-overview') || '（記載なし）') + '</div>';
 
-  h += '<div class="r-h2">4. 除草剤使用記録</div>';
+  h += '<div class="r-h2">5. 除草剤使用記録</div>';
   h += '<b>散布状況写真</b>' + photoHtml('prev-figh');
   h += '<div class="r-notes">' + (val('f-herbicide') || '（記載なし）') + '</div>';
 
-  h += '<div class="r-h2">5. 次回作業の提案</div>';
+  h += '<div class="r-h2">6. 次回作業の提案</div>';
   h += '<b>提案箇所写真</b>' + photoHtml('prev-figp');
   h += '<div class="r-notes">' + (val('f-proposal') || '（記載なし）') + '</div>';
 
-  h += '<div class="r-h2">6. 備考・連絡事項</div>';
+  h += '<div class="r-h2">7. 備考・連絡事項</div>';
   h += '<div class="r-notes">' + (val('f-remarks') || '特になし') + '</div>';
 
   var iu = val('f-icloud');
@@ -449,6 +463,9 @@ function backToForm() {
   document.getElementById('view-form').style.display   = 'block';
   window.scrollTo(0, 0);
 }
+
+/* 初期エリアを1つ追加 */
+addArea();
 
 /* 今日の日付をセット */
 var d = new Date();

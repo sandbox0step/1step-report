@@ -452,8 +452,8 @@ function extractSiteInfo(rawText) {
   var companyRe   = /株式会社|有限会社|合同会社|支店|営業所|本社|所有者|保全管理|施工業者/;
   var nameExclude = /株式会社|有限会社|合同会社|支店|営業所|様|殿|御中|所有者|保全管理|施工業者/;
   var addressRe   = /[市区町村郡]|番地|丁目|[0-9]+番[0-9]*号/;
-  /* 都道府県で「始まる」行を判定する正規表現（先頭一致） */
-  var prefStart   = /^(東京都|北海道|(?:大阪|京都)府|.{2,3}県)/;
+  /* 都道府県名または市/区/町/村で「始まる」行（先頭一致） */
+  var prefStart   = /^(東京都|北海道|(?:大阪|京都)府|.{2,3}県|[市区町村])/;
   var allLabels   = /施工地|所在地|設置場所|工事場所|現場住所|住所|工事名|現場名|発電所名|施設名|名称|工番|管理番号|設備.?ID|No\.|№|番号/;
 
   var result = { name: null, jobno: null, location: null };
@@ -576,23 +576,17 @@ function extractSiteInfo(rawText) {
     result.location = locRaw;
     console.log('Location: ' + result.location + ' (Reason: ラベル直後の値)');
   }
-  /* ===== 所在地② 「県から始まる」＋市町村が続く行を優先 ===== */
+  /* ===== 所在地②【消去法】都道府県名 or 市/区/町/村から始まり、末尾が「発電所」でない行 ===== */
   if (!result.location) {
-    var locCandWithAddr = null, locCandPrefOnly = null;
     for (var k = 0; k < lines.length; k++) {
       var kl = lines[k];
-      if (!prefStart.test(kl) || companyRe.test(kl) || kl === result.name) continue;
-      if (addressRe.test(kl)) {
-        locCandWithAddr = kl; break; /* 市町村まで含む → 即採用 */
-      } else if (!locCandPrefOnly) {
-        locCandPrefOnly = kl; /* 県名のみ → 候補として保持 */
-      }
-    }
-    var chosen = locCandWithAddr || locCandPrefOnly;
-    if (chosen) {
-      result.location = chosen;
-      var reason = locCandWithAddr ? '県から始まり市町村名が続くので所在地にセットしました' : '県から始まるので所在地にセットしました';
-      console.log('Location: ' + result.location + ' (Reason: ' + reason + ')');
+      if (!prefStart.test(kl)) continue;       /* 地名始点でない → スキップ */
+      if (/発電所$/.test(kl)) continue;         /* 末尾が発電所 → 名称なのでスキップ */
+      if (companyRe.test(kl)) continue;         /* 会社名を含む → スキップ */
+      if (kl === result.name) continue;          /* 既に名称として採用済み → スキップ */
+      result.location = kl;
+      console.log('Location: ' + result.location + ' (Reason: 地名から始まり発電所で終わらないため所在地と判断しました)');
+      break;
     }
   }
   /* ===== 所在地③ 市区町村・番地フォールバック ===== */

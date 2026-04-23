@@ -245,9 +245,12 @@
   <input type="text" id="f-staff" placeholder="例：山田 太郎" readonly style="background:#f0f8f0;">
 
   <h2>現場スペック（コピペで自動入力）</h2>
-  <div style="background:#fffbf0;border:2px solid #f9a825;border-radius:8px;padding:12px 14px;margin:0 0 10px;font-size:15px;line-height:1.8;color:#555;">
-    ① iPhoneの「写真」アプリで看板の写真を開く<br>
-    ② 文字を長押し →「すべて選択」→「コピー」<br>
+  <label>看板写真（タップ／クリックで拡大）</label>
+  <input type="file" id="sign" accept="image/*" onchange="onSignUpload(this)">
+  <div id="prev-sign" class="prev"></div>
+  <div style="background:#fffbf0;border:2px solid #f9a825;border-radius:8px;padding:12px 14px;margin:8px 0 10px;font-size:15px;line-height:1.8;color:#555;">
+    ① 上の写真をタップして拡大し、看板の文字を確認<br>
+    ② iPhoneなら「写真」アプリで文字を長押し →「コピー」<br>
     ③ 下の大きな枠に貼り付けてボタンを押す
   </div>
   <textarea id="sign-paste" style="min-height:160px;font-size:16px;" placeholder="ここに貼り付ける（改行ごとに複数行OK）" onpaste="setTimeout(parsePastedText, 80)" onchange="parsePastedText()"></textarea>
@@ -259,7 +262,7 @@
   <input type="text" id="f-jobno" placeholder="例：JOB-2026-001">
   <label>③ 所在地（施工地・現場所在地）</label>
   <input type="text" id="f-location" placeholder="例：○○県○○市○○町1-2-3">
-  <button type="button" onclick="resetSiteFields()" style="margin-top:6px;padding:6px 16px;font-size:14px;background:#fff;color:#888;border:1px solid #bbb;border-radius:4px;cursor:pointer;">↺ 上の3項目をクリア</button>
+  <button type="button" onclick="if(confirm('写真・貼り付け欄・名称・工番・所在地をすべてクリアしますか？'))resetSiteFields()" style="margin-top:6px;padding:6px 16px;font-size:14px;background:#fff;color:#888;border:1px solid #bbb;border-radius:4px;cursor:pointer;">↺ この欄をすべてクリア</button>
 
   <div id="areas-container"></div>
   <button type="button" class="add-area-btn" onclick="addArea()">＋ エリアを追加</button>
@@ -332,7 +335,29 @@ function doLogin() {
   initLocalStorage();
 }
 
-/* 現場スペック＋ペーストエリアを全クリア＋localStorage削除 */
+/* 看板写真：アップロード → サムネイル表示（クリックで新タブ拡大） */
+function onSignUpload(input) {
+  var box = document.getElementById('prev-sign');
+  box.innerHTML = '';
+  if (!input.files.length) return;
+  var src = URL.createObjectURL(input.files[0]);
+  var wrap = document.createElement('div');
+  wrap.className = 'prev-item';
+  var img = document.createElement('img');
+  img.src = src;
+  img.title = 'クリック／タップで拡大';
+  img.style.cursor = 'pointer';
+  img.onclick = function() { window.open(src, '_blank'); };
+  var btn = document.createElement('button');
+  btn.className = 'prev-del';
+  btn.textContent = '×';
+  btn.onclick = function() { wrap.remove(); input.value = ''; };
+  wrap.appendChild(img);
+  wrap.appendChild(btn);
+  box.appendChild(wrap);
+}
+
+/* 現場スペック全クリア（写真・貼り付け欄・3項目・localStorage） */
 function resetSiteFields() {
   ['f-name', 'f-jobno', 'f-location'].forEach(function(id) {
     var el = document.getElementById(id);
@@ -340,6 +365,10 @@ function resetSiteFields() {
   });
   var sp = document.getElementById('sign-paste');
   if (sp) sp.value = '';
+  var pv = document.getElementById('prev-sign');
+  if (pv) pv.innerHTML = '';
+  var si = document.getElementById('sign');
+  if (si) si.value = '';
   localStorage.removeItem('site_name');
   localStorage.removeItem('site_jobno');
   localStorage.removeItem('site_location');

@@ -32,7 +32,8 @@
     textarea {
       display: block; width: 100%; font-size: 16px;
       padding: 10px; box-sizing: border-box;
-      border: 1px solid #aaa; border-radius: 4px; background: #fff;
+      color: #000; background: #fff;
+      border: 2px solid #333; border-radius: 4px;
     }
     textarea { min-height: 80px; resize: vertical; }
     input[type=file] { display: block; font-size: 16px; margin: 8px 0; width: 100%; }
@@ -80,40 +81,7 @@
       margin-bottom: 4px;
     }
 
-    /* ===== 看板写真タップヒント ===== */
-    .sign-wrap { position: relative; display: inline-block; cursor: pointer; }
-    .sign-wrap .tap-hint {
-      position: absolute; bottom: 0; left: 0; right: 0;
-      background: rgba(0,0,0,0.55); color: #fff;
-      font-size: 11px; text-align: center; padding: 4px 2px;
-      border-radius: 0 0 4px 4px; pointer-events: none;
-    }
-    #img-modal { display: none; }
-    #img-modal.open { display: flex; }
-    .modal-field-row { display:flex;align-items:center;gap:8px;margin-bottom:5px; }
-    .modal-label { color:#90A4AE;font-size:11px;width:38px;flex-shrink:0;text-align:right; }
-    .modal-input {
-      flex:1;padding:6px 8px;font-size:14px;
-      background:#263238;color:#fff;
-      border:1px solid #455A64;border-radius:6px;
-      -webkit-appearance:none;box-sizing:border-box;
-    }
-    .modal-input::placeholder { color:#546E7A; }
-    @keyframes field-flash {
-      0%   { background:#43A047; border-color:#81C784; }
-      100% { background:#263238; border-color:#455A64; }
-    }
-    .modal-input.flashing { animation: field-flash 0.9s ease-out forwards; }
-
     /* ===== 看板テキスト貼り付けエリア ===== */
-    .paste-box {
-      border: 2px dashed #f9a825; border-radius: 8px;
-      padding: 12px 14px; margin: 10px 0 4px; background: #fffdf0;
-    }
-    .paste-box textarea {
-      min-height: 90px; font-size: 14px; background: #fff;
-      border-color: #ddd; margin-top: 4px;
-    }
     .parse-btn {
       display: block; width: 100%;
       font-size: 15px; font-weight: bold;
@@ -123,19 +91,6 @@
       cursor: pointer; -webkit-appearance: none; box-sizing: border-box;
     }
     .field-highlight { background: #fffde7 !important; transition: background 0.3s; }
-
-    /* ===== 現場スペックグループ ===== */
-    .spec-group {
-      border: 2px solid #2e7d45; border-radius: 8px;
-      padding: 12px 14px; margin: 8px 0 16px;
-      background: #f4fbf6;
-    }
-    .spec-group-title {
-      font-size: 13px; font-weight: bold; color: #2e7d45;
-      margin: 0 0 8px; letter-spacing: 0.05em;
-    }
-    .spec-group label { margin-top: 8px; }
-    .spec-group label:first-of-type { margin-top: 0; }
 
     /* ===== エリアヘッダー ===== */
     .area-header {
@@ -276,16 +231,6 @@
   <label>案件名</label>
   <input type="text" id="f-project" placeholder="例：○○住宅地 除草管理作業">
 
-  <div class="spec-group">
-    <p class="spec-group-title">▼ 現場スペック（看板OCRで自動入力）</p>
-    <label>① 名称（現場名称）</label>
-    <input type="text" id="f-name" placeholder="例：○○太陽光発電所">
-    <label>② 工番（設備ID / 管理番号）</label>
-    <input type="text" id="f-jobno" placeholder="例：JOB-2026-001">
-    <label>③ 所在地（施工地・現場所在地）</label>
-    <input type="text" id="f-location" placeholder="例：○○県○○市○○町1-2-3">
-  </div>
-
   <label>提出先（クライアント名）</label>
   <input type="text" id="f-client" placeholder="例：合同会社 SUNDAY driver &amp; co.">
   <label>作業日</label>
@@ -300,14 +245,19 @@
   <input type="text" id="f-staff" placeholder="例：山田 太郎" readonly style="background:#f0f8f0;">
 
   <h2>看板写真</h2>
-  <div id="prev-sign" class="prev"></div>
   <input type="file" id="sign" accept="image/*" onchange="onSignUpload(this)">
+  <div id="prev-sign" class="prev"></div>
 
-  <div class="paste-box">
-    <label style="margin:0 0 4px;">看板の文字をここに貼り付け</label>
-    <textarea id="sign-paste" placeholder="スマホのテキスト認識でコピーした文字をそのまま貼り付けてください..." onpaste="setTimeout(parsePastedText, 80)" onchange="parsePastedText()"></textarea>
-    <button type="button" class="parse-btn" onclick="parsePastedText()">↓ 名称・工番・所在地に自動振り分け</button>
-  </div>
+  <label>看板の文字をここに貼り付け</label>
+  <textarea id="sign-paste" placeholder="スマホのテキスト認識でコピーした文字をそのまま貼り付けてください..." onpaste="setTimeout(parsePastedText, 80)" onchange="parsePastedText()"></textarea>
+  <button type="button" class="parse-btn" onclick="parsePastedText()">↓ 名称・工番・所在地に自動振り分け</button>
+
+  <label>① 名称（現場名称）</label>
+  <input type="text" id="f-name" placeholder="例：○○太陽光発電所">
+  <label>② 工番（設備ID / 管理番号）</label>
+  <input type="text" id="f-jobno" placeholder="例：JOB-2026-001">
+  <label>③ 所在地（施工地・現場所在地）</label>
+  <input type="text" id="f-location" placeholder="例：○○県○○市○○町1-2-3">
 
   <div id="areas-container"></div>
   <button type="button" class="add-area-btn" onclick="addArea()">＋ エリアを追加</button>
@@ -341,58 +291,6 @@
 <div id="view-report"></div>
 
 
-<!-- ===== 拡大モーダル ===== -->
-<div id="img-modal" style="position:fixed;inset:0;z-index:1000;background:#111;flex-direction:column;">
-
-  <!-- ① ヒント（上部） -->
-  <div style="flex-shrink:0;padding:7px 12px;background:#1a1a1a;border-bottom:1px solid #2a2a2a;display:flex;align-items:center;justify-content:space-between;">
-    <span style="color:#78909C;font-size:12px;">文字を長押し選択 → ボタンで振り分け　または直接入力</span>
-    <button onclick="closeModal()" style="font-size:13px;font-weight:bold;color:#fff;background:#c62828;border:none;border-radius:6px;padding:5px 12px;cursor:pointer;white-space:nowrap;-webkit-appearance:none;">完了</button>
-  </div>
-
-  <!-- ② 写真（flex:1 で残りスペースを占有、キーボード表示時は自動縮小） -->
-  <div id="modal-photo-wrap" style="flex:1;min-height:0;overflow:hidden;display:flex;align-items:center;justify-content:center;background:#000;padding:4px;">
-    <img id="modal-img" src="" style="max-width:100%;max-height:100%;object-fit:contain;display:block;user-select:text;-webkit-user-select:text;">
-  </div>
-
-  <!-- ③ 振り分けバー（テキスト選択時のみ表示） -->
-  <div id="modal-sel-bar" style="display:none;flex-shrink:0;background:#263238;padding:7px 10px;border-top:1px solid #37474F;">
-    <div style="color:#78909C;font-size:11px;margin-bottom:5px;">選択中：<span id="modal-sel-preview" style="color:#FFE082;font-weight:bold;"></span></div>
-    <div style="display:flex;gap:6px;">
-      <button onclick="sendToField('f-name')"     style="flex:1;padding:9px 4px;font-size:13px;font-weight:bold;background:#1565C0;color:#fff;border:none;border-radius:7px;cursor:pointer;">📌 名称</button>
-      <button onclick="sendToField('f-jobno')"    style="flex:1;padding:9px 4px;font-size:13px;font-weight:bold;background:#2E7D32;color:#fff;border:none;border-radius:7px;cursor:pointer;">🔢 工番</button>
-      <button onclick="sendToField('f-location')" style="flex:1;padding:9px 4px;font-size:13px;font-weight:bold;background:#6A1B9A;color:#fff;border:none;border-radius:7px;cursor:pointer;">📍 所在地</button>
-    </div>
-  </div>
-
-  <!-- ④ 入力フィールド（写真直下・直接入力可・メインフィールドに即時反映） -->
-  <div style="flex-shrink:0;background:#1C2833;padding:8px 12px 6px;border-top:2px solid #37474F;">
-    <div style="color:#546E7A;font-size:10px;margin-bottom:5px;letter-spacing:0.5px;">▼ 入力内容は元の画面に自動反映されます</div>
-    <div class="modal-field-row">
-      <label class="modal-label" style="color:#42A5F5;">名称</label>
-      <input id="modal-f-name"     type="text" class="modal-input" placeholder="写真を見ながら直接入力できます"
-             oninput="syncModalField('f-name',this.value)"
-             onfocus="onModalInputFocus(this)" onblur="onModalInputBlur()">
-    </div>
-    <div class="modal-field-row">
-      <label class="modal-label" style="color:#66BB6A;">工番</label>
-      <input id="modal-f-jobno"    type="text" class="modal-input" placeholder="例: ABC-1234"
-             oninput="syncModalField('f-jobno',this.value)"
-             onfocus="onModalInputFocus(this)" onblur="onModalInputBlur()">
-    </div>
-    <div class="modal-field-row">
-      <label class="modal-label" style="color:#AB47BC;">所在地</label>
-      <input id="modal-f-location" type="text" class="modal-input" placeholder="例: 岡山県〇〇市〇〇町"
-             oninput="syncModalField('f-location',this.value)"
-             onfocus="onModalInputFocus(this)" onblur="onModalInputBlur()">
-    </div>
-  </div>
-
-  <!-- ⑤ 完了ボタン（親指エリア・入力中は非表示） -->
-  <div id="modal-done-wrap" style="flex-shrink:0;padding:6px 12px 10px;background:#1C2833;">
-    <button onclick="closeModal()" style="width:100%;padding:13px;font-size:16px;font-weight:bold;background:#c62828;color:#fff;border:none;border-radius:10px;cursor:pointer;-webkit-appearance:none;">完了（閉じる）</button>
-  </div>
-</div>
 
 <!-- ===== JavaScript ===== -->
 <script>
@@ -432,7 +330,7 @@ function doLogin() {
   initLocalStorage();
 }
 
-/* ===== 看板写真（拡大モーダル対応） ===== */
+/* ===== 看板写真 ===== */
 function onSignUpload(input) {
   var box = document.getElementById('prev-sign');
   box.innerHTML = '';
@@ -440,155 +338,23 @@ function onSignUpload(input) {
 
   var src  = URL.createObjectURL(input.files[0]);
   var wrap = document.createElement('div');
-  wrap.className = 'prev-item sign-wrap';
+  wrap.className = 'prev-item';
 
   var img = document.createElement('img');
   img.src = src;
-  img.title = 'タップして拡大';
-  img.onclick = function() { openModal(src); };
-
-  var hint = document.createElement('div');
-  hint.className = 'tap-hint';
-  hint.textContent = '🔍 タップして拡大・文字コピー';
 
   var btn = document.createElement('button');
   btn.className = 'prev-del';
   btn.textContent = '×';
   btn.onclick = function() {
-    if (!confirm('リセットしてよろしいですか？\n看板写真と現場スペックの入力内容をすべて消去します。')) return;
+    if (!confirm('リセットしてよろしいですか？\n看板写真と名称・工番・所在地をすべて消去します。')) return;
     wrap.remove();
     resetSiteFields();
   };
 
   wrap.appendChild(img);
-  wrap.appendChild(hint);
   wrap.appendChild(btn);
   box.appendChild(wrap);
-}
-
-function openModal(src) {
-  document.getElementById('modal-img').src = src;
-  /* モーダルの入力欄に現在値を同期 */
-  ['name', 'jobno', 'location'].forEach(function(k) {
-    var main   = document.getElementById('f-' + k);
-    var mirror = document.getElementById('modal-f-' + k);
-    if (main && mirror) mirror.value = main.value;
-  });
-  document.getElementById('img-modal').classList.add('open');
-  document.body.style.overflow = 'hidden';
-  document.addEventListener('selectionchange', onModalSelection);
-  /* キーボード表示時にモーダルを可視領域に追従させる */
-  if (window.visualViewport) {
-    window.visualViewport.addEventListener('resize', onViewportResize);
-    window.visualViewport.addEventListener('scroll', onViewportResize);
-  }
-}
-
-function closeModal() {
-  document.removeEventListener('selectionchange', onModalSelection);
-  if (window.visualViewport) {
-    window.visualViewport.removeEventListener('resize', onViewportResize);
-    window.visualViewport.removeEventListener('scroll', onViewportResize);
-  }
-  var modal = document.getElementById('img-modal');
-  modal.style.top = '';
-  modal.style.height = '';
-  hideSelBar();
-  modal.classList.remove('open');
-  document.body.style.overflow = '';
-}
-
-/* visualViewport: キーボード出現時にモーダルを可視領域に縮める */
-function onViewportResize() {
-  var vv    = window.visualViewport;
-  var modal = document.getElementById('img-modal');
-  if (!modal.classList.contains('open')) return;
-  modal.style.top    = vv.offsetTop + 'px';
-  modal.style.height = vv.height + 'px';
-}
-
-/* モーダル内フィールドの手入力 → メインフィールドへ即時反映 */
-function syncModalField(mainId, value) {
-  var el = document.getElementById(mainId);
-  if (el) { el.value = value; el.dispatchEvent(new Event('input')); }
-}
-
-/* キーボード表示中: 完了ボタンを隠して写真エリアを最小化 */
-function onModalInputFocus(input) {
-  document.getElementById('modal-done-wrap').style.display = 'none';
-  /* フォーカスした入力欄を見えるようにスクロール（Androidなど向け） */
-  setTimeout(function() {
-    input.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-  }, 150);
-}
-
-/* キーボード閉じた後: 完了ボタンを再表示 */
-function onModalInputBlur() {
-  setTimeout(function() {
-    document.getElementById('modal-done-wrap').style.display = '';
-    /* モーダルサイズをリセット */
-    var modal = document.getElementById('img-modal');
-    modal.style.top    = '';
-    modal.style.height = '';
-  }, 200);
-}
-
-/* テキスト選択を監視してバーを表示／非表示 */
-function onModalSelection() {
-  var modal = document.getElementById('img-modal');
-  if (!modal.classList.contains('open')) return;
-  var sel = window.getSelection();
-  var txt = sel ? sel.toString().trim() : '';
-  if (txt.length > 0) {
-    var preview = txt.length > 24 ? txt.substring(0, 24) + '…' : txt;
-    document.getElementById('modal-sel-preview').textContent = preview;
-    document.getElementById('modal-sel-bar').style.display = 'block';
-  } else {
-    hideSelBar();
-  }
-}
-
-function hideSelBar() {
-  document.getElementById('modal-sel-bar').style.display = 'none';
-  document.getElementById('modal-sel-preview').textContent = '';
-}
-
-/* 選択テキストを指定フィールドへ送る */
-function sendToField(fieldId) {
-  var sel = window.getSelection();
-  var raw = sel ? sel.toString() : '';
-  /* 余分な空白・改行を整理 */
-  var txt = raw.replace(/[\r\n]+/g, ' ').replace(/\s{2,}/g, ' ').trim();
-  if (!txt) return;
-
-  /* 矛盾チェック（軽い警告のみ、ブロックしない） */
-  if (fieldId === 'f-name' && /^(東京都|北海道|(?:大阪|京都)府|.{2,3}県|[市区町村])/.test(txt)) {
-    console.log('Note: 住所らしい文字列が名称へセットされました: ' + txt);
-  }
-  if (fieldId === 'f-location' && /発電所$/.test(txt)) {
-    console.log('Note: 発電所で終わる文字列が所在地へセットされました: ' + txt);
-  }
-
-  /* メインフィールドへ反映 */
-  setField(fieldId, txt);
-  console.log('sendToField: ' + fieldId + ' ← "' + txt + '"');
-
-  /* モーダル内ミラーフィールドへ反映＋フラッシュアニメーション */
-  var mirror = document.getElementById('modal-' + fieldId);
-  if (mirror) {
-    mirror.value = txt;
-    mirror.classList.remove('flashing');
-    void mirror.offsetWidth; /* reflow でアニメーションをリセット */
-    mirror.classList.add('flashing');
-    setTimeout(function() { mirror.classList.remove('flashing'); }, 900);
-  }
-
-  /* 振り分けバーに完了メッセージを表示してから消す */
-  var labels = { 'f-name': '名称', 'f-jobno': '工番', 'f-location': '所在地' };
-  var prev = document.getElementById('modal-sel-preview');
-  prev.textContent = '✅ ' + labels[fieldId] + 'へ反映！';
-  if (sel) sel.removeAllRanges();
-  setTimeout(function() { hideSelBar(); }, 1000);
 }
 
 /* 現場スペック＋ペーストエリアを全クリア＋localStorage削除 */

@@ -245,13 +245,25 @@
   <input type="text" id="f-staff" placeholder="例：山田 太郎" readonly style="background:#f0f8f0;">
 
   <h2>現場スペック（コピペで自動入力）</h2>
-  <label>看板写真（タップ／クリックで拡大）</label>
-  <input type="file" id="sign" accept="image/*" onchange="onSignUpload(this)">
-  <div id="prev-sign" class="prev"></div>
-  <div style="background:#fffbf0;border:2px solid #f9a825;border-radius:8px;padding:12px 14px;margin:8px 0 10px;font-size:15px;line-height:1.8;color:#555;">
-    ① 上の写真をタップして拡大し、看板の文字を確認<br>
-    ② iPhoneなら「写真」アプリで文字を長押し →「コピー」<br>
-    ③ 下の大きな枠に貼り付けてボタンを押す
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:10px;">
+    <div>
+      <label style="margin:0 0 4px;font-size:14px;">① 看板写真</label>
+      <input type="file" id="sign" accept="image/*" onchange="onSinglePhoto(this)" style="font-size:13px;">
+      <div id="prev-sign" class="prev"></div>
+    </div>
+    <div>
+      <label style="margin:0 0 4px;font-size:14px;">② 全景（作業前）</label>
+      <input type="file" id="before" accept="image/*" onchange="onSinglePhoto(this)" style="font-size:13px;">
+      <div id="prev-before" class="prev"></div>
+    </div>
+    <div>
+      <label style="margin:0 0 4px;font-size:14px;">③ 全景（作業後）</label>
+      <input type="file" id="after" accept="image/*" onchange="onSinglePhoto(this)" style="font-size:13px;">
+      <div id="prev-after" class="prev"></div>
+    </div>
+  </div>
+  <div style="background:#fffbf0;border:2px solid #f9a825;border-radius:8px;padding:12px 14px;margin:0 0 10px;font-size:15px;line-height:1.8;color:#555;">
+    看板写真をタップして拡大し、文字を確認 → iPhoneの「写真」アプリで長押しコピー →<br>下の欄に貼り付けてボタンを押す
   </div>
   <textarea id="sign-paste" style="min-height:160px;font-size:16px;" placeholder="ここに貼り付ける（改行ごとに複数行OK）" onpaste="setTimeout(parsePastedText, 80)" onchange="parsePastedText()"></textarea>
   <button type="button" class="parse-btn" onclick="parsePastedText()">↓ 名称・工番・所在地に自動振り分け</button>
@@ -335,9 +347,9 @@ function doLogin() {
   initLocalStorage();
 }
 
-/* 看板写真：アップロード → サムネイル表示（クリックで新タブ拡大） */
-function onSignUpload(input) {
-  var box = document.getElementById('prev-sign');
+/* 単票写真：アップロード → サムネイル（クリックで新タブ拡大）。id="sign/before/after" → prev-{id} に表示 */
+function onSinglePhoto(input) {
+  var box = document.getElementById('prev-' + input.id);
   box.innerHTML = '';
   if (!input.files.length) return;
   var src = URL.createObjectURL(input.files[0]);
@@ -357,7 +369,7 @@ function onSignUpload(input) {
   box.appendChild(wrap);
 }
 
-/* 現場スペック全クリア（写真・貼り付け欄・3項目・localStorage） */
+/* 現場スペック全クリア（3枚写真・貼り付け欄・名称工番所在地・localStorage） */
 function resetSiteFields() {
   ['f-name', 'f-jobno', 'f-location'].forEach(function(id) {
     var el = document.getElementById(id);
@@ -365,10 +377,12 @@ function resetSiteFields() {
   });
   var sp = document.getElementById('sign-paste');
   if (sp) sp.value = '';
-  var pv = document.getElementById('prev-sign');
-  if (pv) pv.innerHTML = '';
-  var si = document.getElementById('sign');
-  if (si) si.value = '';
+  ['sign', 'before', 'after'].forEach(function(id) {
+    var pv = document.getElementById('prev-' + id);
+    if (pv) pv.innerHTML = '';
+    var fi = document.getElementById(id);
+    if (fi) fi.value = '';
+  });
   localStorage.removeItem('site_name');
   localStorage.removeItem('site_jobno');
   localStorage.removeItem('site_location');
@@ -719,6 +733,28 @@ function sendToSpreadsheet(data) {
   }).catch(function(e) { console.warn('[Sheets送信失敗]', e); });
 }
 
+/* 写真プレビューから最初の1枚のsrcを取得 */
+function firstPhotoSrc(prevId) {
+  var box = document.getElementById(prevId);
+  if (!box) return null;
+  var img = box.querySelector('img');
+  return img ? img.src : null;
+}
+
+/* 報告書用：ラベル付き写真セル（なしの場合はグレー枠） */
+function photoGridCell(label, src) {
+  var s = '<div style="text-align:center;">';
+  s += '<div style="font-weight:bold;font-size:13px;color:#1a5c2a;margin-bottom:6px;">' + label + '</div>';
+  if (src) {
+    s += '<img src="' + src + '" style="width:100%;max-height:180px;object-fit:cover;border:1px solid #aaa;border-radius:4px;cursor:pointer;display:block;" onclick="window.open(this.src,\'_blank\')">';
+    s += '<div style="font-size:11px;color:#888;margin-top:2px;">クリックで拡大</div>';
+  } else {
+    s += '<div style="height:80px;background:#f5f5f5;border:1px dashed #ccc;border-radius:4px;display:flex;align-items:center;justify-content:center;color:#bbb;font-size:13px;">（なし）</div>';
+  }
+  s += '</div>';
+  return s;
+}
+
 /* 報告書を生成して画面を切り替える */
 function generateReport() {
   var reportData = buildReportData();
@@ -754,7 +790,14 @@ function generateReport() {
   h += '<tr><th>担当者</th><td>' + st   + '</td></tr>';
   h += '</table>';
 
-  h += '<div class="r-h2">2. エリア別 作業記録</div>';
+  h += '<div class="r-h2">2. 現場写真</div>';
+  h += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin:12px 0;">';
+  h += photoGridCell('① 看板写真',      firstPhotoSrc('prev-sign'));
+  h += photoGridCell('② 全景（作業前）', firstPhotoSrc('prev-before'));
+  h += photoGridCell('③ 全景（作業後）', firstPhotoSrc('prev-after'));
+  h += '</div>';
+
+  h += '<div class="r-h2">3. エリア別 作業記録</div>';
   var areaBlocks = document.querySelectorAll('#areas-container [id^="area-block-"]');
   for (var a = 0; a < areaBlocks.length; a++) {
     var k = areaBlocks[a].id.replace('area-block-', '');
@@ -769,18 +812,18 @@ function generateReport() {
     h += '<p class="no-photo">（エリアなし）</p>';
   }
 
-  h += '<div class="r-h2">3. 全体所見</div>';
+  h += '<div class="r-h2">4. 全体所見</div>';
   h += '<div class="r-notes">' + (val('f-overview') || '（記載なし）') + '</div>';
 
-  h += '<div class="r-h2">4. 除草剤使用記録</div>';
+  h += '<div class="r-h2">5. 除草剤使用記録</div>';
   h += '<b>散布状況写真</b>' + photoHtml('prev-figh');
   h += '<div class="r-notes">' + (val('f-herbicide') || '（記載なし）') + '</div>';
 
-  h += '<div class="r-h2">5. 次回作業の提案</div>';
+  h += '<div class="r-h2">6. 次回作業の提案</div>';
   h += '<b>提案箇所写真</b>' + photoHtml('prev-figp');
   h += '<div class="r-notes">' + (val('f-proposal') || '（記載なし）') + '</div>';
 
-  h += '<div class="r-h2">6. 備考・連絡事項</div>';
+  h += '<div class="r-h2">7. 備考・連絡事項</div>';
   h += '<div class="r-notes">' + (val('f-remarks') || '特になし') + '</div>';
 
   var iu = val('f-icloud');

@@ -28,6 +28,7 @@
     label { display: block; font-weight: bold; margin: 10px 0 4px; font-size: 16px; }
     input[type=text],
     input[type=date],
+    input[type=time],
     input[type=password],
     textarea {
       display: block; width: 100%; font-size: 16px;
@@ -238,7 +239,11 @@
   <label>天候 / 気温</label>
   <input type="text" id="f-weather" placeholder="例：晴れ / 22℃">
   <label>作業時間帯</label>
-  <input type="text" id="f-time" placeholder="例：08:30 〜 15:00">
+  <div style="display:flex;align-items:center;gap:8px;">
+    <input type="time" id="f-time-start" style="width:auto;flex:1;display:inline-block;">
+    <span style="font-size:16px;white-space:nowrap;">〜</span>
+    <input type="time" id="f-time-end" style="width:auto;flex:1;display:inline-block;">
+  </div>
   <label>作業人数</label>
   <input type="text" id="f-workers" placeholder="例：3名">
   <label>担当者名（ログイン名）</label>
@@ -261,6 +266,13 @@
       <input type="file" id="after" accept="image/*" onchange="onSinglePhoto(this)" style="font-size:13px;">
       <div id="prev-after" class="prev"></div>
     </div>
+  </div>
+
+  <div style="background:#f0f4ff;border:1px solid #c5cde8;border-radius:8px;padding:12px 14px;margin:8px 0 10px;">
+    <label style="margin:0 0 6px;font-size:14px;font-weight:bold;">Googleフォトアルバム連携</label>
+    <input type="text" id="f-gphoto-url" placeholder="https://photos.google.com/album/...">
+    <button type="button" class="parse-btn" onclick="fetchGooglePhotosAlbum()" style="background:#4285f4;margin-top:8px;">自動振り分け（作業前 / 作業後）</button>
+    <div id="gphoto-status" style="font-size:13px;color:#555;margin-top:6px;min-height:18px;"></div>
   </div>
   <div style="background:#fffbf0;border:2px solid #f9a825;border-radius:8px;padding:12px 14px;margin:0 0 10px;font-size:15px;line-height:1.8;color:#555;">
     看板写真をタップして拡大し、文字を確認 → iPhoneの「写真」アプリで長押しコピー →<br>下の欄に貼り付けてボタンを押す
@@ -323,6 +335,143 @@ var USERS = [
   ,{ pass: "partner9999", name: "外注先B" }
   */
 ];
+
+/* =====================================================
+   Google Photos 連携
+   GOOGLE_CLIENT_ID: Google Cloud Console で作成した
+   OAuth 2.0 クライアントID を設定する
+   スコープ: photoslibrary.readonly
+   ===================================================== */
+var GOOGLE_CLIENT_ID = ''; /* ← OAuth 2.0 クライアントIDをここに設定 */
+var _gToken = null;
+
+function buildWorkTime() {
+  var s = val('f-time-start');
+  var e = val('f-time-end');
+  if (s && e) return s + '〜' + e;
+  if (s) return s + '〜';
+  if (e) return '〜' + e;
+  return '';
+}
+
+function _getAlbumInfo(url) {
+  var m = url.match(/\/album\/([a-zA-Z0-9_\-]+)/);
+  if (m) return { type: 'album', id: m[1] };
+  var s = url.match(/\/share\/([a-zA-Z0-9_\-]+)/);
+  if (s) return { type: 'shared', id: s[1] };
+  return null;
+}
+
+function _requestToken() {
+  return new Promise(function(resolve, reject) {
+    if (typeof google === 'undefined' || !google.accounts) {
+      reject(new Error('Google Identity Services が読み込まれていません'));
+      return;
+    }
+    var client = google.accounts.oauth2.initTokenClient({
+      client_id: GOOGLE_CLIENT_ID,
+      scope: 'https://www.googleapis.com/auth/photoslibrary.readonly',
+      callback: function(resp) {
+        if (resp.error) reject(new Error(resp.error_description || resp.error));
+        else resolve(resp.access_token);
+      },
+      error_callback: function(err) {
+        reject(new Error(err.message || 'OAuth error'));
+      }
+    });
+    client.requestAccessToken();
+  });
+}
+
+async function _getToken() {
+  if (_gToken) return _gToken;
+  if (!GOOGLE_CLIENT_ID) throw new Error('GOOGLE_CLIENT_IDが未設定です（コード内 GOOGLE_CLIENT_ID に設定してください）');
+  _gToken = await _requestToken();
+  return _gToken;
+}
+
+async function _fetchItems(albumId, token) {
+  var items = [], pageToken = null;
+  do {
+    var body = { albumId: albumId, pageSize: 100 };
+    if (pageToken) body.pageToken = pageToken;
+    var res = await fetch('https://photoslibrary.googleapis.com/v1/mediaItems:search', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    if (res.status === 401) { _gToken = null; throw new Error('認証エラー（401）、再度お試しください'); }
+    if (!res.ok) { var er = await res.json(); throw new Error((er.error && er.error.message) || 'API error ' + res.status); }
+    var data = await res.json();
+    if (data.mediaItems) items = items.concat(data.mediaItems);
+    pageToken = data.nextPageToken || null;
+  } while (pageToken);
+  return items;
+}
+
+async function _getAlbumIdForShared(shareToken, token) {
+  var res = await fetch('https://photoslibrary.googleapis.com/v1/sharedAlbums/' + shareToken, {
+    headers: { 'Authorization': 'Bearer ' + token }
+  });
+  if (!res.ok) { var er = await res.json(); throw new Error((er.error && er.error.message) || 'SharedAlbum error ' + res.status); }
+  var data = await res.json();
+  return data.id;
+}
+
+function _injectPhotos(prevId, items) {
+  var box = document.getElementById(prevId);
+  if (!box) return;
+  box.querySelectorAll('.gphoto-item').forEach(function(el) { el.remove(); });
+  items.forEach(function(item) {
+    var src = item.baseUrl + '=w400-h400-c';
+    var wrap = document.createElement('div');
+    wrap.className = 'prev-item gphoto-item';
+    var img = document.createElement('img');
+    img.src = src;
+    img.title = item.filename || '';
+    img.style.cursor = 'pointer';
+    img.onclick = function() { window.open(item.productUrl || src, '_blank'); };
+    var btn = document.createElement('button');
+    btn.className = 'prev-del';
+    btn.textContent = '×';
+    btn.onclick = function() { wrap.remove(); };
+    wrap.appendChild(img);
+    wrap.appendChild(btn);
+    box.appendChild(wrap);
+  });
+}
+
+async function fetchGooglePhotosAlbum() {
+  var st = document.getElementById('gphoto-status');
+  var albumUrl = val('f-gphoto-url');
+  if (!albumUrl) { st.textContent = '⚠️ アルバムURLを入力してください'; return; }
+  var info = _getAlbumInfo(albumUrl);
+  if (!info) { st.textContent = '⚠️ URLからアルバムIDを取得できませんでした'; return; }
+  var endTime = val('f-time-end');
+  if (!endTime) { st.textContent = '⚠️ 先に作業終了時刻を設定してください'; return; }
+  st.textContent = '🔄 Googleにログイン中...';
+  try {
+    var token = await _getToken();
+    var albumId = info.id;
+    if (info.type === 'shared') {
+      st.textContent = '🔄 共有アルバムを確認中...';
+      albumId = await _getAlbumIdForShared(info.id, token);
+    }
+    st.textContent = '🔄 写真一覧を取得中...';
+    var allItems = await _fetchItems(albumId, token);
+    if (!allItems.length) { st.textContent = '⚠️ 写真が見つかりませんでした'; return; }
+    var workDate = val('f-date') || new Date().toISOString().slice(0, 10);
+    var endDt = new Date(workDate + 'T' + endTime + ':00');
+    var before = allItems.filter(function(x) { return x.mediaMetadata && new Date(x.mediaMetadata.creationTime) <= endDt; });
+    var after  = allItems.filter(function(x) { return x.mediaMetadata && new Date(x.mediaMetadata.creationTime) >  endDt; });
+    _injectPhotos('prev-before', before);
+    _injectPhotos('prev-after',  after);
+    st.textContent = '✅ 作業前 ' + before.length + '枚 / 作業後 ' + after.length + '枚 を振り分けました（全 ' + allItems.length + '枚）';
+  } catch(e) {
+    st.textContent = '⚠️ ' + (e.message || e);
+    _gToken = null;
+  }
+}
 
 /* ログイン処理 */
 function doLogin() {
@@ -707,7 +856,7 @@ function buildReportData() {
     client:      val('f-client'),
     date:        val('f-date'),
     weather:     val('f-weather'),
-    workTime:    val('f-time'),
+    workTime:    buildWorkTime(),
     workers:     val('f-workers'),
     staff:       val('f-staff'),
     areas:       areas,
@@ -767,7 +916,7 @@ function generateReport() {
   var cli  = val('f-client')  || '　';
   var dt   = val('f-date')    || '　';
   var wt   = val('f-weather') || '　';
-  var tm   = val('f-time')    || '　';
+  var tm   = buildWorkTime() || '　';
   var wk   = val('f-workers') || '　';
   var st   = val('f-staff')   || '　';
 
@@ -902,5 +1051,6 @@ document.getElementById('f-date').value =
 })();
 </script>
 
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 </body>
 </html>

@@ -118,6 +118,8 @@
     .prev { display: flex; flex-wrap: wrap; gap: 8px; margin: 6px 0 10px; }
     .prev-item { position: relative; display: inline-block; }
     .prev img { width: 120px; height: 120px; object-fit: cover; border: 1px solid #aaa; border-radius: 4px; display: block; }
+    .gphoto-item { display: inline-flex; flex-direction: column; vertical-align: top; }
+    .gphoto-caption { font-size: 10px; color: #444; margin-top: 3px; width: 120px; line-height: 1.5; word-break: break-all; }
     .prev-del {
       position: absolute; top: 0; right: 0;
       width: 44px; height: 44px;
@@ -418,6 +420,76 @@ async function _getAlbumIdForShared(shareToken, token) {
   return data.id;
 }
 
+function _fmtDate(isoStr) {
+  if (!isoStr) return '−';
+  var d = new Date(isoStr);
+  return d.getFullYear() + '/' +
+    ('0'+(d.getMonth()+1)).slice(-2) + '/' +
+    ('0'+d.getDate()).slice(-2) + ' ' +
+    ('0'+d.getHours()).slice(-2) + ':' +
+    ('0'+d.getMinutes()).slice(-2);
+}
+
+function _parseJpegGps(buffer) {
+  try {
+    var v = new DataView(buffer);
+    if (v.byteLength < 4 || v.getUint16(0) !== 0xFFD8) return null;
+    var off = 2;
+    while (off + 4 < v.byteLength) {
+      var mk = v.getUint16(off); off += 2;
+      var ln = v.getUint16(off);
+      if (mk === 0xFFE1 && ln > 8) {
+        var hd = '';
+        for (var i = 0; i < 4; i++) hd += String.fromCharCode(v.getUint8(off+2+i));
+        if (hd === 'Exif') {
+          var tiff = off + 8;
+          var le = v.getUint16(tiff) === 0x4949;
+          var ifd0 = tiff + v.getUint32(tiff+4, le);
+          var ne = v.getUint16(ifd0, le);
+          for (var j = 0; j < ne; j++) {
+            var e = ifd0 + 2 + j*12;
+            if (v.getUint16(e, le) === 0x8825) {
+              var gIfd = tiff + v.getUint32(e+8, le);
+              var gn = v.getUint16(gIfd, le);
+              var G = {};
+              for (var k = 0; k < gn; k++) {
+                var ge = gIfd + 2 + k*12;
+                var gt = v.getUint16(ge, le);
+                if (gt === 1 || gt === 3) {
+                  G[gt] = String.fromCharCode(v.getUint8(ge+8));
+                } else if (gt === 2 || gt === 4) {
+                  var vo = tiff + v.getUint32(ge+8, le);
+                  var r = function(o) { var n=v.getUint32(o,le),d=v.getUint32(o+4,le); return d?n/d:0; };
+                  G[gt] = r(vo) + r(vo+8)/60 + r(vo+16)/3600;
+                }
+              }
+              if (G[2]!=null && G[4]!=null) {
+                return {
+                  lat: (G[2]*(G[1]==='S'?-1:1)).toFixed(6),
+                  lon: (G[4]*(G[3]==='W'?-1:1)).toFixed(6)
+                };
+              }
+              break;
+            }
+          }
+        }
+      }
+      off += ln;
+    }
+  } catch(e) {}
+  return null;
+}
+
+async function _readGpsFromUrl(url, token) {
+  try {
+    var hdrs = { 'Range': 'bytes=0-65535' };
+    if (token) hdrs['Authorization'] = 'Bearer ' + token;
+    var res = await fetch(url, { headers: hdrs, mode: 'cors' });
+    if (!res.ok && res.status !== 206) return null;
+    return _parseJpegGps(await res.arrayBuffer());
+  } catch(e) { return null; }
+}
+
 function _injectPhotos(prevId, items) {
   var box = document.getElementById(prevId);
   if (!box) return;
@@ -435,9 +507,23 @@ function _injectPhotos(prevId, items) {
     btn.className = 'prev-del';
     btn.textContent = '×';
     btn.onclick = function() { wrap.remove(); };
+
+    var caption = document.createElement('div');
+    caption.className = 'gphoto-caption';
+    var gpsSpan = document.createElement('span');
+    gpsSpan.textContent = '📍 取得中...';
+    caption.innerHTML = '📅 ' + _fmtDate(item.mediaMetadata && item.mediaMetadata.creationTime) + '<br>';
+    caption.appendChild(gpsSpan);
+
     wrap.appendChild(img);
     wrap.appendChild(btn);
+    wrap.appendChild(caption);
     box.appendChild(wrap);
+
+    /* GPS読み取りを非同期で試みる */
+    _readGpsFromUrl(item.baseUrl, _gToken).then(function(gps) {
+      gpsSpan.textContent = gps ? ('📍 ' + gps.lat + ', ' + gps.lon) : '📍 −';
+    });
   });
 }
 

@@ -293,10 +293,13 @@
         <span>✅ Googleアカウント連携済み</span>
         <button type="button" onclick="gphotoLogout()" style="font-size:12px;padding:3px 10px;background:#fff;border:1px solid #ccc;border-radius:4px;cursor:pointer;color:#555;-webkit-appearance:none;">ログアウト</button>
       </div>
-      <div id="gphoto-album-list"></div>
+      <label style="font-size:13px;font-weight:bold;margin:4px 0;display:block;">共有アルバムのリンクを貼り付け</label>
+      <input type="text" id="gphoto-album-url"
+        placeholder="https://photos.google.com/share/..."
+        style="display:block;width:100%;font-size:14px;padding:8px 10px;box-sizing:border-box;border:1px solid #c5cde8;border-radius:4px;color:#000;background:#fff;">
       <button type="button" id="gphoto-sort-btn" onclick="gphotoSort()"
-        style="display:none;width:100%;font-size:15px;font-weight:bold;padding:12px;margin-top:8px;background:#4285f4;color:#fff;border:none;border-radius:6px;cursor:pointer;-webkit-appearance:none;box-sizing:border-box;">
-        ▶ 選択したアルバムで自動振り分け（作業前 / 作業後）
+        style="width:100%;font-size:15px;font-weight:bold;padding:12px;margin-top:8px;background:#4285f4;color:#fff;border:none;border-radius:6px;cursor:pointer;-webkit-appearance:none;box-sizing:border-box;">
+        ▶ 自動振り分け（作業前 / 作業後）
       </button>
     </div>
 
@@ -372,7 +375,6 @@ var USERS = [
    ===================================================== */
 var GOOGLE_CLIENT_ID = '281775374398-3rtbu328kdhu27vdsh9kk72vv4qlq0m2.apps.googleusercontent.com';
 var _gToken = null;
-var _gSelectedAlbumId = null;
 
 function buildWorkTime() {
   var s = val('f-time-start');
@@ -554,95 +556,38 @@ function _injectPhotos(prevId, items) {
   });
 }
 
-async function _listAlbums(token) {
-  var albums = [], pageToken = null;
-  do {
-    var url = 'https://photoslibrary.googleapis.com/v1/albums?pageSize=50';
-    if (pageToken) url += '&pageToken=' + encodeURIComponent(pageToken);
-    var res = await fetch(url, { headers: { 'Authorization': 'Bearer ' + token } });
-    if (res.status === 401) { _gToken = null; throw new Error('認証エラー（401）、再度お試しください'); }
-    if (!res.ok) { var er = await res.json(); throw new Error((er.error && er.error.message) || 'API error ' + res.status); }
-    var data = await res.json();
-    if (data.albums) albums = albums.concat(data.albums);
-    pageToken = data.nextPageToken || null;
-  } while (pageToken);
-  return albums;
-}
-
 async function gphotoLogin() {
   var st = document.getElementById('gphoto-status');
   st.textContent = '🔄 Googleにログイン中...';
   try {
-    var token = await _getToken();
+    await _getToken();
     document.getElementById('gphoto-login-area').style.display = 'none';
     document.getElementById('gphoto-albums-area').style.display = 'block';
-    await loadAlbumList(token);
-  } catch(e) {
-    st.textContent = '⚠️ ' + (e.message || e);
-  }
-}
-
-async function loadAlbumList(token) {
-  var st = document.getElementById('gphoto-status');
-  var listBox = document.getElementById('gphoto-album-list');
-  st.textContent = '🔄 アルバム一覧を取得中...';
-  listBox.innerHTML = '';
-  try {
-    var albums = await _listAlbums(token);
     st.textContent = '';
-    renderAlbumList(albums);
   } catch(e) {
     st.textContent = '⚠️ ' + (e.message || e);
   }
-}
-
-function renderAlbumList(albums) {
-  var box = document.getElementById('gphoto-album-list');
-  if (!albums.length) {
-    box.innerHTML = '<p style="color:#888;font-size:13px;margin:6px 0;">アルバムが見つかりませんでした</p>';
-    return;
-  }
-  var wrap = document.createElement('div');
-  wrap.style.cssText = 'max-height:220px;overflow-y:auto;border:1px solid #c5cde8;border-radius:6px;';
-  albums.forEach(function(album, idx) {
-    var item = document.createElement('div');
-    item.dataset.id = album.id;
-    item.style.cssText = 'display:flex;align-items:center;gap:8px;padding:8px 10px;cursor:pointer;font-size:13px;' + (idx ? 'border-top:1px solid #e8edf8;' : '');
-    if (album.coverPhotoBaseUrl) {
-      var thumb = document.createElement('img');
-      thumb.src = album.coverPhotoBaseUrl + '=w40-h40-c';
-      thumb.style.cssText = 'width:36px;height:36px;object-fit:cover;border-radius:3px;flex-shrink:0;';
-      item.appendChild(thumb);
-    }
-    var info = document.createElement('div');
-    info.style.cssText = 'flex:1;min-width:0;';
-    info.innerHTML =
-      '<div style="font-weight:bold;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + (album.title || '（タイトルなし）') + '</div>' +
-      '<div style="font-size:11px;color:#888;">' + (album.mediaItemsCount || '0') + '枚</div>';
-    item.appendChild(info);
-    item.onclick = function() { selectAlbum(album.id, wrap); };
-    wrap.appendChild(item);
-  });
-  box.appendChild(wrap);
-}
-
-function selectAlbum(albumId, container) {
-  _gSelectedAlbumId = albumId;
-  container.querySelectorAll('[data-id]').forEach(function(el) {
-    el.style.background = el.dataset.id === albumId ? '#d4e3ff' : '';
-  });
-  document.getElementById('gphoto-sort-btn').style.display = 'block';
 }
 
 async function gphotoSort() {
   var st = document.getElementById('gphoto-status');
-  if (!_gSelectedAlbumId) { st.textContent = '⚠️ アルバムを選択してください'; return; }
-  var endTime = val('f-time-end');
-  if (!endTime) { st.textContent = '⚠️ 先に作業終了時刻を設定してください'; return; }
+  var albumUrl = val('gphoto-album-url');
+  var endTime  = val('f-time-end');
+
+  if (!albumUrl) { st.textContent = '⚠️ 共有アルバムのリンクを入力してください'; return; }
+  if (!endTime)  { st.textContent = '⚠️ 先に作業終了時刻を設定してください'; return; }
+
+  var info = _getAlbumInfo(albumUrl);
+  if (!info) { st.textContent = '⚠️ URLからアルバムIDを取得できませんでした（URLを確認してください）'; return; }
+
   st.textContent = '🔄 写真一覧を取得中...';
   try {
     var token = await _getToken();
-    var allItems = await _fetchItems(_gSelectedAlbumId, token);
+    var albumId = info.id;
+    if (info.type === 'shared') {
+      albumId = await _getAlbumIdForShared(info.id, token);
+    }
+    var allItems = await _fetchItems(albumId, token);
     if (!allItems.length) { st.textContent = '⚠️ 写真が見つかりませんでした'; return; }
     var workDate = val('f-date') || new Date().toISOString().slice(0, 10);
     var endDt = new Date(workDate + 'T' + endTime + ':00');
@@ -659,11 +604,9 @@ async function gphotoSort() {
 
 function gphotoLogout() {
   _gToken = null;
-  _gSelectedAlbumId = null;
   document.getElementById('gphoto-albums-area').style.display = 'none';
   document.getElementById('gphoto-login-area').style.display = 'block';
-  document.getElementById('gphoto-album-list').innerHTML = '';
-  document.getElementById('gphoto-sort-btn').style.display = 'none';
+  document.getElementById('gphoto-album-url').value = '';
   document.getElementById('gphoto-status').textContent = '';
 }
 

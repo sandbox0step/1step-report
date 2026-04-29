@@ -118,8 +118,7 @@
     .prev { display: flex; flex-wrap: wrap; gap: 8px; margin: 6px 0 10px; }
     .prev-item { position: relative; display: inline-block; }
     .prev img { width: 120px; height: 120px; object-fit: cover; border: 1px solid #aaa; border-radius: 4px; display: block; }
-    .gphoto-item { display: inline-flex; flex-direction: column; vertical-align: top; }
-    .gphoto-caption { font-size: 10px; color: #444; margin-top: 3px; width: 120px; line-height: 1.5; word-break: break-all; }
+
     .prev-del {
       position: absolute; top: 0; right: 0;
       width: 44px; height: 44px;
@@ -255,56 +254,43 @@
   <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:10px;">
     <div>
       <label style="margin:0 0 4px;font-size:14px;">① 看板写真</label>
-      <input type="file" id="sign" accept="image/*" onchange="onSinglePhoto(this)" style="font-size:13px;">
+      <div style="display:flex;gap:4px;">
+        <input type="text" id="sign-url" placeholder="画像URLを貼り付け"
+          style="flex:1;font-size:13px;padding:6px 8px;border:2px solid #333;border-radius:4px;min-width:0;"
+          onpaste="setTimeout(function(){addPhotoUrl('sign-url','prev-sign')},50)"
+          onkeydown="if(event.key==='Enter')addPhotoUrl('sign-url','prev-sign')">
+        <button type="button" onclick="addPhotoUrl('sign-url','prev-sign')"
+          style="padding:6px 8px;font-size:13px;background:#2e7d45;color:#fff;border:none;border-radius:4px;cursor:pointer;white-space:nowrap;-webkit-appearance:none;">追加</button>
+      </div>
       <div id="prev-sign" class="prev"></div>
     </div>
     <div>
       <label style="margin:0 0 4px;font-size:14px;">② 全景（作業前）</label>
-      <input type="file" id="before" accept="image/*" onchange="onSinglePhoto(this)" style="font-size:13px;">
+      <div style="display:flex;gap:4px;">
+        <input type="text" id="before-url" placeholder="画像URLを貼り付け"
+          style="flex:1;font-size:13px;padding:6px 8px;border:2px solid #333;border-radius:4px;min-width:0;"
+          onpaste="setTimeout(function(){addPhotoUrl('before-url','prev-before')},50)"
+          onkeydown="if(event.key==='Enter')addPhotoUrl('before-url','prev-before')">
+        <button type="button" onclick="addPhotoUrl('before-url','prev-before')"
+          style="padding:6px 8px;font-size:13px;background:#2e7d45;color:#fff;border:none;border-radius:4px;cursor:pointer;white-space:nowrap;-webkit-appearance:none;">追加</button>
+      </div>
       <div id="prev-before" class="prev"></div>
     </div>
     <div>
       <label style="margin:0 0 4px;font-size:14px;">③ 全景（作業後）</label>
-      <input type="file" id="after" accept="image/*" onchange="onSinglePhoto(this)" style="font-size:13px;">
+      <div style="display:flex;gap:4px;">
+        <input type="text" id="after-url" placeholder="画像URLを貼り付け"
+          style="flex:1;font-size:13px;padding:6px 8px;border:2px solid #333;border-radius:4px;min-width:0;"
+          onpaste="setTimeout(function(){addPhotoUrl('after-url','prev-after')},50)"
+          onkeydown="if(event.key==='Enter')addPhotoUrl('after-url','prev-after')">
+        <button type="button" onclick="addPhotoUrl('after-url','prev-after')"
+          style="padding:6px 8px;font-size:13px;background:#2e7d45;color:#fff;border:none;border-radius:4px;cursor:pointer;white-space:nowrap;-webkit-appearance:none;">追加</button>
+      </div>
       <div id="prev-after" class="prev"></div>
     </div>
   </div>
 
-  <div style="background:#f0f4ff;border:1px solid #c5cde8;border-radius:8px;padding:12px 14px;margin:8px 0 10px;">
-    <label style="margin:0 0 8px;font-size:14px;font-weight:bold;display:block;">Googleフォトアルバム連携</label>
 
-    <!-- ログイン前 -->
-    <div id="gphoto-login-area">
-      <button type="button" onclick="gphotoLogin()"
-        style="display:flex;align-items:center;gap:10px;padding:10px 18px;background:#fff;border:1px solid #dadce0;border-radius:6px;font-size:15px;font-weight:500;cursor:pointer;color:#3c4043;-webkit-appearance:none;box-shadow:0 1px 3px rgba(0,0,0,0.1);">
-        <svg width="20" height="20" viewBox="0 0 48 48" style="flex-shrink:0;">
-          <path fill="#4285F4" d="M44.5 20H24v8.5h11.7C34.1 33.9 29.6 37 24 37c-7.2 0-13-5.8-13-13s5.8-13 13-13c3.1 0 5.9 1.1 8.1 2.9l6.4-6.4C34.6 4.1 29.6 2 24 2 11.8 2 2 11.8 2 24s9.8 22 22 22c11 0 21-8 21-22 0-1.3-.2-2.7-.5-4z"/>
-          <path fill="#34A853" d="M6.3 14.7l7 5.1C15.2 16.5 19.2 14 24 14c3.1 0 5.9 1.1 8.1 2.9l6.4-6.4C34.6 4.1 29.6 2 24 2c-7.6 0-14.2 4.4-17.7 10.7z"/>
-          <path fill="#FBBC05" d="M24 46c5.5 0 10.5-1.8 14.4-5l-6.7-5.5C29.7 37 27 38 24 38c-5.5 0-10.2-3.2-12.4-7.8l-7 5.4C8 41.6 15.4 46 24 46z"/>
-          <path fill="#EA4335" d="M44.5 20H24v8.5h11.7c-.8 2.3-2.3 4.3-4.3 5.7l6.7 5.5C42.2 36.2 45 30.5 45 24c0-1.3-.2-2.7-.5-4z"/>
-        </svg>
-        Googleでログイン
-      </button>
-    </div>
-
-    <!-- ログイン後 -->
-    <div id="gphoto-albums-area" style="display:none;">
-      <div style="font-size:13px;color:#1a5c2a;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;">
-        <span>✅ Googleアカウント連携済み</span>
-        <button type="button" onclick="gphotoLogout()" style="font-size:12px;padding:3px 10px;background:#fff;border:1px solid #ccc;border-radius:4px;cursor:pointer;color:#555;-webkit-appearance:none;">ログアウト</button>
-      </div>
-      <label style="font-size:13px;font-weight:bold;margin:4px 0;display:block;">共有アルバムのリンクを貼り付け</label>
-      <input type="text" id="gphoto-album-url"
-        placeholder="https://photos.google.com/share/..."
-        style="display:block;width:100%;font-size:14px;padding:8px 10px;box-sizing:border-box;border:1px solid #c5cde8;border-radius:4px;color:#000;background:#fff;">
-      <button type="button" id="gphoto-sort-btn" onclick="gphotoSort()"
-        style="width:100%;font-size:15px;font-weight:bold;padding:12px;margin-top:8px;background:#4285f4;color:#fff;border:none;border-radius:6px;cursor:pointer;-webkit-appearance:none;box-sizing:border-box;">
-        ▶ 自動振り分け（作業前 / 作業後）
-      </button>
-    </div>
-
-    <div id="gphoto-status" style="font-size:13px;color:#555;margin-top:6px;min-height:18px;"></div>
-  </div>
   <div style="background:#fffbf0;border:2px solid #f9a825;border-radius:8px;padding:12px 14px;margin:0 0 10px;font-size:15px;line-height:1.8;color:#555;">
     看板写真をタップして拡大し、文字を確認 → iPhoneの「写真」アプリで長押しコピー →<br>下の欄に貼り付けてボタンを押す
   </div>
@@ -327,12 +313,26 @@
   <textarea id="f-overview" placeholder="全エリアまとめての所見"></textarea>
   <h3>除草剤使用記録（散布状況写真）</h3>
   <div id="prev-figh" class="prev"></div>
-  <input type="file" id="figh" accept="image/*" multiple onchange="preview(this)">
+  <div style="display:flex;gap:6px;">
+    <input type="text" id="figh-url" placeholder="画像URLを貼り付け"
+      style="flex:1;font-size:16px;padding:10px;border:2px solid #333;border-radius:4px;min-width:0;"
+      onpaste="setTimeout(function(){addPhotoUrl('figh-url','prev-figh')},50)"
+      onkeydown="if(event.key==='Enter')addPhotoUrl('figh-url','prev-figh')">
+    <button type="button" onclick="addPhotoUrl('figh-url','prev-figh')"
+      style="padding:10px 14px;font-size:16px;background:#2e7d45;color:#fff;border:none;border-radius:4px;cursor:pointer;-webkit-appearance:none;">追加</button>
+  </div>
   <label>薬剤名・濃度・散布量など</label>
   <textarea id="f-herbicide" placeholder="例：ラウンドアップ 50倍希釈 各エリア 2L"></textarea>
   <h3>次回作業の提案（提案箇所写真）</h3>
   <div id="prev-figp" class="prev"></div>
-  <input type="file" id="figp" accept="image/*" multiple onchange="preview(this)">
+  <div style="display:flex;gap:6px;">
+    <input type="text" id="figp-url" placeholder="画像URLを貼り付け"
+      style="flex:1;font-size:16px;padding:10px;border:2px solid #333;border-radius:4px;min-width:0;"
+      onpaste="setTimeout(function(){addPhotoUrl('figp-url','prev-figp')},50)"
+      onkeydown="if(event.key==='Enter')addPhotoUrl('figp-url','prev-figp')">
+    <button type="button" onclick="addPhotoUrl('figp-url','prev-figp')"
+      style="padding:10px 14px;font-size:16px;background:#2e7d45;color:#fff;border:none;border-radius:4px;cursor:pointer;-webkit-appearance:none;">追加</button>
+  </div>
   <label>次回提案内容</label>
   <textarea id="f-proposal" placeholder="例：次回推奨は6月上旬"></textarea>
   <label>備考・連絡事項</label>
@@ -367,15 +367,6 @@ var USERS = [
   */
 ];
 
-/* =====================================================
-   Google Photos 連携
-   GOOGLE_CLIENT_ID: Google Cloud Console で作成した
-   OAuth 2.0 クライアントID を設定する
-   スコープ: photoslibrary.readonly
-   ===================================================== */
-var GOOGLE_CLIENT_ID = '281775374398-3rtbu328kdhu27vdsh9kk72vv4qlq0m2.apps.googleusercontent.com';
-var _gToken = null;
-
 function buildWorkTime() {
   var s = val('f-time-start');
   var e = val('f-time-end');
@@ -383,231 +374,6 @@ function buildWorkTime() {
   if (s) return s + '〜';
   if (e) return '〜' + e;
   return '';
-}
-
-function _getAlbumInfo(url) {
-  var m = url.match(/\/album\/([a-zA-Z0-9_\-]+)/);
-  if (m) return { type: 'album', id: m[1] };
-  var s = url.match(/\/share\/([a-zA-Z0-9_\-]+)/);
-  if (s) return { type: 'shared', id: s[1] };
-  return null;
-}
-
-function _requestToken() {
-  return new Promise(function(resolve, reject) {
-    if (typeof google === 'undefined' || !google.accounts) {
-      reject(new Error('Google Identity Services が読み込まれていません'));
-      return;
-    }
-    var client = google.accounts.oauth2.initTokenClient({
-      client_id: GOOGLE_CLIENT_ID,
-      scope: 'https://www.googleapis.com/auth/photoslibrary.readonly',
-      callback: function(resp) {
-        if (resp.error) reject(new Error(resp.error_description || resp.error));
-        else resolve(resp.access_token);
-      },
-      error_callback: function(err) {
-        reject(new Error(err.message || 'OAuth error'));
-      }
-    });
-    client.requestAccessToken();
-  });
-}
-
-async function _getToken() {
-  if (_gToken) return _gToken;
-  if (!GOOGLE_CLIENT_ID) throw new Error('GOOGLE_CLIENT_IDが未設定です（コード内 GOOGLE_CLIENT_ID に設定してください）');
-  _gToken = await _requestToken();
-  return _gToken;
-}
-
-async function _fetchItems(albumId, token) {
-  var items = [], pageToken = null;
-  do {
-    var body = { albumId: albumId, pageSize: 100 };
-    if (pageToken) body.pageToken = pageToken;
-    var res = await fetch('https://photoslibrary.googleapis.com/v1/mediaItems:search', {
-      method: 'POST',
-      headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
-      body: JSON.stringify(body)
-    });
-    if (res.status === 401) { _gToken = null; throw new Error('認証エラー（401）、再度お試しください'); }
-    if (!res.ok) { var er = await res.json(); throw new Error((er.error && er.error.message) || 'API error ' + res.status); }
-    var data = await res.json();
-    if (data.mediaItems) items = items.concat(data.mediaItems);
-    pageToken = data.nextPageToken || null;
-  } while (pageToken);
-  return items;
-}
-
-async function _getAlbumIdForShared(shareToken, token) {
-  var res = await fetch('https://photoslibrary.googleapis.com/v1/sharedAlbums/' + shareToken, {
-    headers: { 'Authorization': 'Bearer ' + token }
-  });
-  if (!res.ok) { var er = await res.json(); throw new Error((er.error && er.error.message) || 'SharedAlbum error ' + res.status); }
-  var data = await res.json();
-  return data.id;
-}
-
-function _fmtDate(isoStr) {
-  if (!isoStr) return '−';
-  var d = new Date(isoStr);
-  return d.getFullYear() + '/' +
-    ('0'+(d.getMonth()+1)).slice(-2) + '/' +
-    ('0'+d.getDate()).slice(-2) + ' ' +
-    ('0'+d.getHours()).slice(-2) + ':' +
-    ('0'+d.getMinutes()).slice(-2);
-}
-
-function _parseJpegGps(buffer) {
-  try {
-    var v = new DataView(buffer);
-    if (v.byteLength < 4 || v.getUint16(0) !== 0xFFD8) return null;
-    var off = 2;
-    while (off + 4 < v.byteLength) {
-      var mk = v.getUint16(off); off += 2;
-      var ln = v.getUint16(off);
-      if (mk === 0xFFE1 && ln > 8) {
-        var hd = '';
-        for (var i = 0; i < 4; i++) hd += String.fromCharCode(v.getUint8(off+2+i));
-        if (hd === 'Exif') {
-          var tiff = off + 8;
-          var le = v.getUint16(tiff) === 0x4949;
-          var ifd0 = tiff + v.getUint32(tiff+4, le);
-          var ne = v.getUint16(ifd0, le);
-          for (var j = 0; j < ne; j++) {
-            var e = ifd0 + 2 + j*12;
-            if (v.getUint16(e, le) === 0x8825) {
-              var gIfd = tiff + v.getUint32(e+8, le);
-              var gn = v.getUint16(gIfd, le);
-              var G = {};
-              for (var k = 0; k < gn; k++) {
-                var ge = gIfd + 2 + k*12;
-                var gt = v.getUint16(ge, le);
-                if (gt === 1 || gt === 3) {
-                  G[gt] = String.fromCharCode(v.getUint8(ge+8));
-                } else if (gt === 2 || gt === 4) {
-                  var vo = tiff + v.getUint32(ge+8, le);
-                  var r = function(o) { var n=v.getUint32(o,le),d=v.getUint32(o+4,le); return d?n/d:0; };
-                  G[gt] = r(vo) + r(vo+8)/60 + r(vo+16)/3600;
-                }
-              }
-              if (G[2]!=null && G[4]!=null) {
-                return {
-                  lat: (G[2]*(G[1]==='S'?-1:1)).toFixed(6),
-                  lon: (G[4]*(G[3]==='W'?-1:1)).toFixed(6)
-                };
-              }
-              break;
-            }
-          }
-        }
-      }
-      off += ln;
-    }
-  } catch(e) {}
-  return null;
-}
-
-async function _readGpsFromUrl(url, token) {
-  try {
-    var hdrs = { 'Range': 'bytes=0-65535' };
-    if (token) hdrs['Authorization'] = 'Bearer ' + token;
-    var res = await fetch(url, { headers: hdrs, mode: 'cors' });
-    if (!res.ok && res.status !== 206) return null;
-    return _parseJpegGps(await res.arrayBuffer());
-  } catch(e) { return null; }
-}
-
-function _injectPhotos(prevId, items) {
-  var box = document.getElementById(prevId);
-  if (!box) return;
-  box.querySelectorAll('.gphoto-item').forEach(function(el) { el.remove(); });
-  items.forEach(function(item) {
-    var src = item.baseUrl + '=w400-h400-c';
-    var wrap = document.createElement('div');
-    wrap.className = 'prev-item gphoto-item';
-    var img = document.createElement('img');
-    img.src = src;
-    img.title = item.filename || '';
-    img.style.cursor = 'pointer';
-    img.onclick = function() { window.open(item.productUrl || src, '_blank'); };
-    var btn = document.createElement('button');
-    btn.className = 'prev-del';
-    btn.textContent = '×';
-    btn.onclick = function() { wrap.remove(); };
-
-    var caption = document.createElement('div');
-    caption.className = 'gphoto-caption';
-    var gpsSpan = document.createElement('span');
-    gpsSpan.textContent = '📍 取得中...';
-    caption.innerHTML = '📅 ' + _fmtDate(item.mediaMetadata && item.mediaMetadata.creationTime) + '<br>';
-    caption.appendChild(gpsSpan);
-
-    wrap.appendChild(img);
-    wrap.appendChild(btn);
-    wrap.appendChild(caption);
-    box.appendChild(wrap);
-
-    /* GPS読み取りを非同期で試みる */
-    _readGpsFromUrl(item.baseUrl, _gToken).then(function(gps) {
-      gpsSpan.textContent = gps ? ('📍 ' + gps.lat + ', ' + gps.lon) : '📍 −';
-    });
-  });
-}
-
-async function gphotoLogin() {
-  var st = document.getElementById('gphoto-status');
-  st.textContent = '🔄 Googleにログイン中...';
-  try {
-    await _getToken();
-    document.getElementById('gphoto-login-area').style.display = 'none';
-    document.getElementById('gphoto-albums-area').style.display = 'block';
-    st.textContent = '';
-  } catch(e) {
-    st.textContent = '⚠️ ' + (e.message || e);
-  }
-}
-
-async function gphotoSort() {
-  var st = document.getElementById('gphoto-status');
-  var albumUrl = val('gphoto-album-url');
-  var endTime  = val('f-time-end');
-
-  if (!albumUrl) { st.textContent = '⚠️ 共有アルバムのリンクを入力してください'; return; }
-  if (!endTime)  { st.textContent = '⚠️ 先に作業終了時刻を設定してください'; return; }
-
-  var info = _getAlbumInfo(albumUrl);
-  if (!info) { st.textContent = '⚠️ URLからアルバムIDを取得できませんでした（URLを確認してください）'; return; }
-
-  st.textContent = '🔄 写真一覧を取得中...';
-  try {
-    var token = await _getToken();
-    var albumId = info.id;
-    if (info.type === 'shared') {
-      albumId = await _getAlbumIdForShared(info.id, token);
-    }
-    var allItems = await _fetchItems(albumId, token);
-    if (!allItems.length) { st.textContent = '⚠️ 写真が見つかりませんでした'; return; }
-    var workDate = val('f-date') || new Date().toISOString().slice(0, 10);
-    var endDt = new Date(workDate + 'T' + endTime + ':00');
-    var before = allItems.filter(function(x) { return x.mediaMetadata && new Date(x.mediaMetadata.creationTime) <= endDt; });
-    var after  = allItems.filter(function(x) { return x.mediaMetadata && new Date(x.mediaMetadata.creationTime) >  endDt; });
-    _injectPhotos('prev-before', before);
-    _injectPhotos('prev-after',  after);
-    st.textContent = '✅ 作業前 ' + before.length + '枚 / 作業後 ' + after.length + '枚 を振り分けました（全 ' + allItems.length + '枚）';
-  } catch(e) {
-    st.textContent = '⚠️ ' + (e.message || e);
-    _gToken = null;
-  }
-}
-
-function gphotoLogout() {
-  _gToken = null;
-  document.getElementById('gphoto-albums-area').style.display = 'none';
-  document.getElementById('gphoto-login-area').style.display = 'block';
-  document.getElementById('gphoto-album-url').value = '';
-  document.getElementById('gphoto-status').textContent = '';
 }
 
 /* ログイン処理 */
@@ -633,26 +399,33 @@ function doLogin() {
   initLocalStorage();
 }
 
-/* 単票写真：アップロード → サムネイル（クリックで新タブ拡大）。id="sign/before/after" → prev-{id} に表示 */
-function onSinglePhoto(input) {
-  var box = document.getElementById('prev-' + input.id);
-  box.innerHTML = '';
-  if (!input.files.length) return;
-  var src = URL.createObjectURL(input.files[0]);
+/* URL貼り付け → プレビュー追加 */
+function addPhotoUrl(inputId, prevId) {
+  var input = document.getElementById(inputId);
+  var url = (input ? input.value : '').trim();
+  if (!url) return;
+  var box = document.getElementById(prevId);
+  if (!box) return;
   var wrap = document.createElement('div');
   wrap.className = 'prev-item';
   var img = document.createElement('img');
-  img.src = src;
+  img.src = url;
   img.title = 'クリック／タップで拡大';
   img.style.cursor = 'pointer';
-  img.onclick = function() { window.open(src, '_blank'); };
+  img.onclick = (function(u) { return function() { window.open(u, '_blank'); }; })(url);
+  img.onerror = function() {
+    img.style.cssText = 'width:120px;height:120px;object-fit:cover;border:1px solid #f99;background:#fef;';
+    img.alt = '読込エラー';
+  };
   var btn = document.createElement('button');
   btn.className = 'prev-del';
   btn.textContent = '×';
-  btn.onclick = function() { wrap.remove(); input.value = ''; };
+  btn.onclick = function() { wrap.remove(); };
   wrap.appendChild(img);
   wrap.appendChild(btn);
   box.appendChild(wrap);
+  input.value = '';
+  input.focus();
 }
 
 /* 現場スペック全クリア（3枚写真・貼り付け欄・名称工番所在地・localStorage） */
@@ -666,8 +439,8 @@ function resetSiteFields() {
   ['sign', 'before', 'after'].forEach(function(id) {
     var pv = document.getElementById('prev-' + id);
     if (pv) pv.innerHTML = '';
-    var fi = document.getElementById(id);
-    if (fi) fi.value = '';
+    var ui = document.getElementById(id + '-url');
+    if (ui) ui.value = '';
   });
   localStorage.removeItem('site_name');
   localStorage.removeItem('site_jobno');
@@ -912,13 +685,22 @@ function addArea() {
     '</div>' +
     '<h3>草刈り作業前（Before）</h3>' +
     '<div id="prev-fi' + id + 'b" class="prev"></div>' +
-    '<input type="file" id="fi' + id + 'b" accept="image/*" multiple onchange="preview(this)">' +
+    '<div style="display:flex;gap:4px;">' +
+      '<input type="text" id="url-fi' + id + 'b" placeholder="画像URLを貼り付け" style="flex:1;font-size:14px;padding:8px;border:2px solid #333;border-radius:4px;min-width:0;" onpaste="setTimeout(function(){addPhotoUrl(\'url-fi' + id + 'b\',\'prev-fi' + id + 'b\')},50)" onkeydown="if(event.key===\'Enter\')addPhotoUrl(\'url-fi' + id + 'b\',\'prev-fi' + id + 'b\')">' +
+      '<button type="button" onclick="addPhotoUrl(\'url-fi' + id + 'b\',\'prev-fi' + id + 'b\')" style="padding:8px 12px;font-size:14px;background:#2e7d45;color:#fff;border:none;border-radius:4px;cursor:pointer;-webkit-appearance:none;">追加</button>' +
+    '</div>' +
     '<h3>草刈り作業後（After）</h3>' +
     '<div id="prev-fi' + id + 'a" class="prev"></div>' +
-    '<input type="file" id="fi' + id + 'a" accept="image/*" multiple onchange="preview(this)">' +
+    '<div style="display:flex;gap:4px;">' +
+      '<input type="text" id="url-fi' + id + 'a" placeholder="画像URLを貼り付け" style="flex:1;font-size:14px;padding:8px;border:2px solid #333;border-radius:4px;min-width:0;" onpaste="setTimeout(function(){addPhotoUrl(\'url-fi' + id + 'a\',\'prev-fi' + id + 'a\')},50)" onkeydown="if(event.key===\'Enter\')addPhotoUrl(\'url-fi' + id + 'a\',\'prev-fi' + id + 'a\')">' +
+      '<button type="button" onclick="addPhotoUrl(\'url-fi' + id + 'a\',\'prev-fi' + id + 'a\')" style="padding:8px 12px;font-size:14px;background:#2e7d45;color:#fff;border:none;border-radius:4px;cursor:pointer;-webkit-appearance:none;">追加</button>' +
+    '</div>' +
     '<h3>除草剤散布後（現状）</h3>' +
     '<div id="prev-fi' + id + 'h" class="prev"></div>' +
-    '<input type="file" id="fi' + id + 'h" accept="image/*" multiple onchange="preview(this)">' +
+    '<div style="display:flex;gap:4px;">' +
+      '<input type="text" id="url-fi' + id + 'h" placeholder="画像URLを貼り付け" style="flex:1;font-size:14px;padding:8px;border:2px solid #333;border-radius:4px;min-width:0;" onpaste="setTimeout(function(){addPhotoUrl(\'url-fi' + id + 'h\',\'prev-fi' + id + 'h\')},50)" onkeydown="if(event.key===\'Enter\')addPhotoUrl(\'url-fi' + id + 'h\',\'prev-fi' + id + 'h\')">' +
+      '<button type="button" onclick="addPhotoUrl(\'url-fi' + id + 'h\',\'prev-fi' + id + 'h\')" style="padding:8px 12px;font-size:14px;background:#2e7d45;color:#fff;border:none;border-radius:4px;cursor:pointer;-webkit-appearance:none;">追加</button>' +
+    '</div>' +
     '<label>所見・気づいた点</label>' +
     '<textarea id="notes-' + id + '" placeholder="エリア' + id + 'で気づいた点を記入してください"></textarea>';
   container.appendChild(div);
@@ -929,26 +711,6 @@ function deleteArea(id) {
   if (el) el.remove();
 }
 
-/* 写真プレビュー */
-function preview(input) {
-  var box = document.getElementById('prev-' + input.id);
-  box.innerHTML = '';
-  for (var i = 0; i < input.files.length; i++) {
-    (function(src) {
-      var wrap = document.createElement('div');
-      wrap.className = 'prev-item';
-      var img = document.createElement('img');
-      img.src = src;
-      var btn = document.createElement('button');
-      btn.className = 'prev-del';
-      btn.textContent = '×';
-      btn.onclick = function() { wrap.remove(); };
-      wrap.appendChild(img);
-      wrap.appendChild(btn);
-      box.appendChild(wrap);
-    })(URL.createObjectURL(input.files[i]));
-  }
-}
 
 /* フォームの値を取得 */
 function val(id) {
@@ -1188,6 +950,5 @@ document.getElementById('f-date').value =
 })();
 </script>
 
-<script src="https://accounts.google.com/gsi/client" async defer></script>
 </body>
 </html>

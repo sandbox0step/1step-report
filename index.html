@@ -254,39 +254,33 @@
   <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:10px;">
     <div>
       <label style="margin:0 0 4px;font-size:14px;">① 看板写真</label>
-      <div style="display:flex;gap:4px;">
-        <input type="text" id="sign-url" placeholder="画像URLを貼り付け"
-          style="flex:1;font-size:13px;padding:6px 8px;border:2px solid #333;border-radius:4px;min-width:0;"
-          onpaste="setTimeout(function(){addPhotoUrl('sign-url','prev-sign')},50)"
-          onkeydown="if(event.key==='Enter')addPhotoUrl('sign-url','prev-sign')">
-        <button type="button" onclick="addPhotoUrl('sign-url','prev-sign')"
-          style="padding:6px 8px;font-size:13px;background:#2e7d45;color:#fff;border:none;border-radius:4px;cursor:pointer;white-space:nowrap;-webkit-appearance:none;">追加</button>
-      </div>
       <div id="prev-sign" class="prev"></div>
+      <input type="file" id="sign-file" accept="image/*" multiple style="display:none"
+        onchange="handleFileSelect(this,'prev-sign',5)">
+      <button type="button" onclick="document.getElementById('sign-file').click()"
+        style="display:block;width:100%;padding:8px 4px;font-size:12px;background:#e8f5ec;color:#1a5c2a;border:2px dashed #2e7d45;border-radius:6px;cursor:pointer;-webkit-appearance:none;box-sizing:border-box;">
+        📷 選択（最大5枚）
+      </button>
     </div>
     <div>
       <label style="margin:0 0 4px;font-size:14px;">② 全景（作業前）</label>
-      <div style="display:flex;gap:4px;">
-        <input type="text" id="before-url" placeholder="画像URLを貼り付け"
-          style="flex:1;font-size:13px;padding:6px 8px;border:2px solid #333;border-radius:4px;min-width:0;"
-          onpaste="setTimeout(function(){addPhotoUrl('before-url','prev-before')},50)"
-          onkeydown="if(event.key==='Enter')addPhotoUrl('before-url','prev-before')">
-        <button type="button" onclick="addPhotoUrl('before-url','prev-before')"
-          style="padding:6px 8px;font-size:13px;background:#2e7d45;color:#fff;border:none;border-radius:4px;cursor:pointer;white-space:nowrap;-webkit-appearance:none;">追加</button>
-      </div>
       <div id="prev-before" class="prev"></div>
+      <input type="file" id="before-file" accept="image/*" multiple style="display:none"
+        onchange="handleFileSelect(this,'prev-before',5)">
+      <button type="button" onclick="document.getElementById('before-file').click()"
+        style="display:block;width:100%;padding:8px 4px;font-size:12px;background:#e8f5ec;color:#1a5c2a;border:2px dashed #2e7d45;border-radius:6px;cursor:pointer;-webkit-appearance:none;box-sizing:border-box;">
+        📷 選択（最大5枚）
+      </button>
     </div>
     <div>
       <label style="margin:0 0 4px;font-size:14px;">③ 全景（作業後）</label>
-      <div style="display:flex;gap:4px;">
-        <input type="text" id="after-url" placeholder="画像URLを貼り付け"
-          style="flex:1;font-size:13px;padding:6px 8px;border:2px solid #333;border-radius:4px;min-width:0;"
-          onpaste="setTimeout(function(){addPhotoUrl('after-url','prev-after')},50)"
-          onkeydown="if(event.key==='Enter')addPhotoUrl('after-url','prev-after')">
-        <button type="button" onclick="addPhotoUrl('after-url','prev-after')"
-          style="padding:6px 8px;font-size:13px;background:#2e7d45;color:#fff;border:none;border-radius:4px;cursor:pointer;white-space:nowrap;-webkit-appearance:none;">追加</button>
-      </div>
       <div id="prev-after" class="prev"></div>
+      <input type="file" id="after-file" accept="image/*" multiple style="display:none"
+        onchange="handleFileSelect(this,'prev-after',5)">
+      <button type="button" onclick="document.getElementById('after-file').click()"
+        style="display:block;width:100%;padding:8px 4px;font-size:12px;background:#e8f5ec;color:#1a5c2a;border:2px dashed #2e7d45;border-radius:6px;cursor:pointer;-webkit-appearance:none;box-sizing:border-box;">
+        📷 選択（最大5枚）
+      </button>
     </div>
   </div>
 
@@ -313,26 +307,22 @@
   <textarea id="f-overview" placeholder="全エリアまとめての所見"></textarea>
   <h3>除草剤使用記録（散布状況写真）</h3>
   <div id="prev-figh" class="prev"></div>
-  <div style="display:flex;gap:6px;">
-    <input type="text" id="figh-url" placeholder="画像URLを貼り付け"
-      style="flex:1;font-size:16px;padding:10px;border:2px solid #333;border-radius:4px;min-width:0;"
-      onpaste="setTimeout(function(){addPhotoUrl('figh-url','prev-figh')},50)"
-      onkeydown="if(event.key==='Enter')addPhotoUrl('figh-url','prev-figh')">
-    <button type="button" onclick="addPhotoUrl('figh-url','prev-figh')"
-      style="padding:10px 14px;font-size:16px;background:#2e7d45;color:#fff;border:none;border-radius:4px;cursor:pointer;-webkit-appearance:none;">追加</button>
-  </div>
+  <input type="file" id="figh-file" accept="image/*" multiple style="display:none"
+    onchange="handleFileSelect(this,'prev-figh',5)">
+  <button type="button" onclick="document.getElementById('figh-file').click()"
+    style="display:block;width:100%;padding:12px;font-size:15px;background:#e8f5ec;color:#1a5c2a;border:2px dashed #2e7d45;border-radius:6px;cursor:pointer;-webkit-appearance:none;box-sizing:border-box;margin-bottom:6px;">
+    📷 写真を選択（最大5枚）
+  </button>
   <label>薬剤名・濃度・散布量など</label>
   <textarea id="f-herbicide" placeholder="例：ラウンドアップ 50倍希釈 各エリア 2L"></textarea>
   <h3>次回作業の提案（提案箇所写真）</h3>
   <div id="prev-figp" class="prev"></div>
-  <div style="display:flex;gap:6px;">
-    <input type="text" id="figp-url" placeholder="画像URLを貼り付け"
-      style="flex:1;font-size:16px;padding:10px;border:2px solid #333;border-radius:4px;min-width:0;"
-      onpaste="setTimeout(function(){addPhotoUrl('figp-url','prev-figp')},50)"
-      onkeydown="if(event.key==='Enter')addPhotoUrl('figp-url','prev-figp')">
-    <button type="button" onclick="addPhotoUrl('figp-url','prev-figp')"
-      style="padding:10px 14px;font-size:16px;background:#2e7d45;color:#fff;border:none;border-radius:4px;cursor:pointer;-webkit-appearance:none;">追加</button>
-  </div>
+  <input type="file" id="figp-file" accept="image/*" multiple style="display:none"
+    onchange="handleFileSelect(this,'prev-figp',5)">
+  <button type="button" onclick="document.getElementById('figp-file').click()"
+    style="display:block;width:100%;padding:12px;font-size:15px;background:#e8f5ec;color:#1a5c2a;border:2px dashed #2e7d45;border-radius:6px;cursor:pointer;-webkit-appearance:none;box-sizing:border-box;margin-bottom:6px;">
+    📷 写真を選択（最大5枚）
+  </button>
   <label>次回提案内容</label>
   <textarea id="f-proposal" placeholder="例：次回推奨は6月上旬"></textarea>
   <label>備考・連絡事項</label>
@@ -399,24 +389,16 @@ function doLogin() {
   initLocalStorage();
 }
 
-/* URL貼り付け → プレビュー追加 */
-function addPhotoUrl(inputId, prevId) {
-  var input = document.getElementById(inputId);
-  var url = (input ? input.value : '').trim();
-  if (!url) return;
-  var box = document.getElementById(prevId);
-  if (!box) return;
+/* ファイル1枚をプレビューボックスに追加 */
+function addFilePreview(file, box) {
+  var src = URL.createObjectURL(file);
   var wrap = document.createElement('div');
   wrap.className = 'prev-item';
   var img = document.createElement('img');
-  img.src = url;
-  img.title = 'クリック／タップで拡大';
+  img.src = src;
+  img.title = 'タップで拡大';
   img.style.cursor = 'pointer';
-  img.onclick = (function(u) { return function() { window.open(u, '_blank'); }; })(url);
-  img.onerror = function() {
-    img.style.cssText = 'width:120px;height:120px;object-fit:cover;border:1px solid #f99;background:#fef;';
-    img.alt = '読込エラー';
-  };
+  img.onclick = (function(u) { return function() { window.open(u, '_blank'); }; })(src);
   var btn = document.createElement('button');
   btn.className = 'prev-del';
   btn.textContent = '×';
@@ -424,8 +406,31 @@ function addPhotoUrl(inputId, prevId) {
   wrap.appendChild(img);
   wrap.appendChild(btn);
   box.appendChild(wrap);
+}
+
+/* ファイル選択 → プレビュー追加（上限maxCount枚）
+   autoExtractId: 初回追加時に全景写真欄が空なら1枚目を自動コピー */
+function handleFileSelect(input, prevId, maxCount, autoExtractId) {
+  var box = document.getElementById(prevId);
+  if (!box) return;
+  var current = box.querySelectorAll('.prev-item').length;
+  var files = Array.from(input.files);
+  var remaining = maxCount - current;
+  if (remaining <= 0) {
+    alert('写真は最大' + maxCount + '枚まで選択できます（現在' + current + '枚）');
+    input.value = '';
+    return;
+  }
+  var toAdd = files.slice(0, remaining);
+  var wasEmpty = (current === 0);
+  toAdd.forEach(function(file) { addFilePreview(file, box); });
+  if (wasEmpty && autoExtractId && toAdd.length > 0) {
+    var extractBox = document.getElementById(autoExtractId);
+    if (extractBox && extractBox.querySelectorAll('.prev-item').length === 0) {
+      addFilePreview(toAdd[0], extractBox);
+    }
+  }
   input.value = '';
-  input.focus();
 }
 
 /* 現場スペック全クリア（3枚写真・貼り付け欄・名称工番所在地・localStorage） */
@@ -439,8 +444,6 @@ function resetSiteFields() {
   ['sign', 'before', 'after'].forEach(function(id) {
     var pv = document.getElementById('prev-' + id);
     if (pv) pv.innerHTML = '';
-    var ui = document.getElementById(id + '-url');
-    if (ui) ui.value = '';
   });
   localStorage.removeItem('site_name');
   localStorage.removeItem('site_jobno');
@@ -685,22 +688,16 @@ function addArea() {
     '</div>' +
     '<h3>草刈り作業前（Before）</h3>' +
     '<div id="prev-fi' + id + 'b" class="prev"></div>' +
-    '<div style="display:flex;gap:4px;">' +
-      '<input type="text" id="url-fi' + id + 'b" placeholder="画像URLを貼り付け" style="flex:1;font-size:14px;padding:8px;border:2px solid #333;border-radius:4px;min-width:0;" onpaste="setTimeout(function(){addPhotoUrl(\'url-fi' + id + 'b\',\'prev-fi' + id + 'b\')},50)" onkeydown="if(event.key===\'Enter\')addPhotoUrl(\'url-fi' + id + 'b\',\'prev-fi' + id + 'b\')">' +
-      '<button type="button" onclick="addPhotoUrl(\'url-fi' + id + 'b\',\'prev-fi' + id + 'b\')" style="padding:8px 12px;font-size:14px;background:#2e7d45;color:#fff;border:none;border-radius:4px;cursor:pointer;-webkit-appearance:none;">追加</button>' +
-    '</div>' +
+    '<input type="file" id="file-fi' + id + 'b" accept="image/*" multiple style="display:none" onchange="handleFileSelect(this,\'prev-fi' + id + 'b\',5,\'prev-before\')">' +
+    '<button type="button" onclick="document.getElementById(\'file-fi' + id + 'b\').click()" style="display:block;width:100%;padding:10px;font-size:14px;background:#e8f5ec;color:#1a5c2a;border:2px dashed #2e7d45;border-radius:6px;cursor:pointer;-webkit-appearance:none;box-sizing:border-box;margin-bottom:6px;">📷 写真を選択（最大5枚）</button>' +
     '<h3>草刈り作業後（After）</h3>' +
     '<div id="prev-fi' + id + 'a" class="prev"></div>' +
-    '<div style="display:flex;gap:4px;">' +
-      '<input type="text" id="url-fi' + id + 'a" placeholder="画像URLを貼り付け" style="flex:1;font-size:14px;padding:8px;border:2px solid #333;border-radius:4px;min-width:0;" onpaste="setTimeout(function(){addPhotoUrl(\'url-fi' + id + 'a\',\'prev-fi' + id + 'a\')},50)" onkeydown="if(event.key===\'Enter\')addPhotoUrl(\'url-fi' + id + 'a\',\'prev-fi' + id + 'a\')">' +
-      '<button type="button" onclick="addPhotoUrl(\'url-fi' + id + 'a\',\'prev-fi' + id + 'a\')" style="padding:8px 12px;font-size:14px;background:#2e7d45;color:#fff;border:none;border-radius:4px;cursor:pointer;-webkit-appearance:none;">追加</button>' +
-    '</div>' +
+    '<input type="file" id="file-fi' + id + 'a" accept="image/*" multiple style="display:none" onchange="handleFileSelect(this,\'prev-fi' + id + 'a\',5,\'prev-after\')">' +
+    '<button type="button" onclick="document.getElementById(\'file-fi' + id + 'a\').click()" style="display:block;width:100%;padding:10px;font-size:14px;background:#e8f5ec;color:#1a5c2a;border:2px dashed #2e7d45;border-radius:6px;cursor:pointer;-webkit-appearance:none;box-sizing:border-box;margin-bottom:6px;">📷 写真を選択（最大5枚）</button>' +
     '<h3>除草剤散布後（現状）</h3>' +
     '<div id="prev-fi' + id + 'h" class="prev"></div>' +
-    '<div style="display:flex;gap:4px;">' +
-      '<input type="text" id="url-fi' + id + 'h" placeholder="画像URLを貼り付け" style="flex:1;font-size:14px;padding:8px;border:2px solid #333;border-radius:4px;min-width:0;" onpaste="setTimeout(function(){addPhotoUrl(\'url-fi' + id + 'h\',\'prev-fi' + id + 'h\')},50)" onkeydown="if(event.key===\'Enter\')addPhotoUrl(\'url-fi' + id + 'h\',\'prev-fi' + id + 'h\')">' +
-      '<button type="button" onclick="addPhotoUrl(\'url-fi' + id + 'h\',\'prev-fi' + id + 'h\')" style="padding:8px 12px;font-size:14px;background:#2e7d45;color:#fff;border:none;border-radius:4px;cursor:pointer;-webkit-appearance:none;">追加</button>' +
-    '</div>' +
+    '<input type="file" id="file-fi' + id + 'h" accept="image/*" multiple style="display:none" onchange="handleFileSelect(this,\'prev-fi' + id + 'h\',5)">' +
+    '<button type="button" onclick="document.getElementById(\'file-fi' + id + 'h\').click()" style="display:block;width:100%;padding:10px;font-size:14px;background:#e8f5ec;color:#1a5c2a;border:2px dashed #2e7d45;border-radius:6px;cursor:pointer;-webkit-appearance:none;box-sizing:border-box;margin-bottom:6px;">📷 写真を選択（最大5枚）</button>' +
     '<label>所見・気づいた点</label>' +
     '<textarea id="notes-' + id + '" placeholder="エリア' + id + 'で気づいた点を記入してください"></textarea>';
   container.appendChild(div);

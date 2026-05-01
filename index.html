@@ -164,6 +164,38 @@
       margin: 0 0 12px; width: 100%; box-sizing: border-box;
     }
     #pdf-btn:disabled { background: #90a4ae; cursor: not-allowed; }
+    #pdf-preview-btn {
+      display: none;
+      font-size: 15px; font-weight: bold; padding: 10px 20px;
+      background: #fff; color: #1565c0;
+      border: 2px solid #1565c0; border-radius: 6px;
+      cursor: pointer; -webkit-appearance: none;
+      margin: 0 0 6px; width: 100%; box-sizing: border-box;
+    }
+    #pdf-preview-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    /* ===== 改ページコントロール ===== */
+    .page-break-ctrl {
+      position: relative; height: 0; overflow: visible;
+      margin: 0; text-align: center; z-index: 5;
+    }
+    .pb-btn {
+      position: absolute; left: 50%; transform: translateX(-50%);
+      top: -13px;
+      font-size: 11px; padding: 3px 12px;
+      background: #f5f5f5; color: #aaa;
+      border: 1px dashed #ccc; border-radius: 10px;
+      cursor: pointer; -webkit-appearance: none; white-space: nowrap;
+    }
+    .page-break-ctrl.active .pb-btn {
+      background: #fff8e1; color: #e65100;
+      border: 1px solid #ffb300; font-weight: bold;
+    }
+    .page-break-ctrl.active::before {
+      content: ''; position: absolute; left: 0; right: 0; top: 0;
+      border-top: 2px dashed #ffb300;
+    }
+    @media print { .page-break-ctrl { display: none !important; } }
 
     /* ===== 報告書ビュー ===== */
     #view-report { display: none; max-width: 720px; margin: 0 auto; padding: 0 8px 40px; }
@@ -336,6 +368,7 @@
 
 <!-- ===== 報告書ビュー（生成後に表示） ===== -->
 <input type="button" id="back-btn" value="← 入力画面に戻る" onclick="backToForm()">
+<input type="button" id="pdf-preview-btn" value="🔍 プレビュー" onclick="previewPdf()">
 <input type="button" id="pdf-btn" value="📄 PDFで保存" onclick="generatePdf()">
 <div id="view-report"></div>
 
@@ -894,6 +927,7 @@ function generateReport() {
   h += photoGridCell('② 全景（作業前）', firstPhotoSrc('prev-before'));
   h += photoGridCell('③ 全景（作業後）', firstPhotoSrc('prev-after'));
   h += '</div>';
+  h += pbCtrl('spec');
 
   h += '<div class="r-h2">3. エリア別 作業記録</div>';
   var areaBlocks = document.querySelectorAll('#areas-container [id^="area-block-"]');
@@ -906,6 +940,7 @@ function generateReport() {
     h += '<b>異常箇所写真</b>'     + photoHtml('prev-fi' + k + 'n');
     h += '<b>所見</b>';
     h += '<div class="r-notes">' + (val('notes-' + k) || '（所見なし）') + '</div>';
+    h += pbCtrl('area-' + k);
   }
   if (!areaBlocks.length) {
     h += '<p class="no-photo">（エリアなし）</p>';
@@ -915,6 +950,7 @@ function generateReport() {
   h += '<b>点検写真</b>' + photoHtml('prev-other');
   h += '<b>所見</b>';
   h += '<div class="r-notes">' + (val('f-other-notes') || '（記載なし）') + '</div>';
+  h += pbCtrl('other');
 
   h += '<div class="r-h2">5. 備考・連絡事項</div>';
   h += '<div class="r-notes">' + (val('f-remarks') || '特になし') + '</div>';
@@ -926,6 +962,7 @@ function generateReport() {
     h += '<a href="' + iu + '" style="color:#1a5c2a;word-break:break-all;">' + iu + '</a>';
     h += '</div>';
   }
+  h += pbCtrl('remarks');
 
   h += '<div style="text-align:right;margin-top:32px;font-size:14px;color:#555;">担当者：' + st + '</div>';
   h += '<p style="text-align:center;color:#bbb;font-size:13px;margin-top:24px;">以上</p>';
@@ -934,22 +971,44 @@ function generateReport() {
   document.getElementById('view-form').style.display   = 'none';
   document.getElementById('view-report').style.display = 'block';
   document.getElementById('done-banner').style.display = 'block';
-  document.getElementById('back-btn').style.display    = 'block';
-  document.getElementById('pdf-btn').style.display     = 'block';
+  document.getElementById('back-btn').style.display        = 'block';
+  document.getElementById('pdf-preview-btn').style.display = 'block';
+  document.getElementById('pdf-btn').style.display         = 'block';
   window.scrollTo(0, 0);
 }
 
 /* 入力画面に戻る */
 function backToForm() {
-  document.getElementById('view-report').style.display = 'none';
-  document.getElementById('done-banner').style.display = 'none';
-  document.getElementById('back-btn').style.display    = 'none';
-  document.getElementById('pdf-btn').style.display     = 'none';
-  document.getElementById('view-form').style.display   = 'block';
+  document.getElementById('view-report').style.display     = 'none';
+  document.getElementById('done-banner').style.display     = 'none';
+  document.getElementById('back-btn').style.display        = 'none';
+  document.getElementById('pdf-preview-btn').style.display = 'none';
+  document.getElementById('pdf-btn').style.display         = 'none';
+  document.getElementById('view-form').style.display       = 'block';
+  _pdfCanvas = null;
   window.scrollTo(0, 0);
 }
 
 /* ===== PDF生成 ===== */
+
+/* 改ページコントロール HTML 生成 */
+function pbCtrl(id) {
+  return '<div class="page-break-ctrl" id="pb-' + id + '">' +
+    '<button type="button" class="pb-btn" onclick="togglePageBreak(\'' + id + '\')">' +
+    'ここで改ページ</button></div>';
+}
+
+/* 改ページトグル */
+function togglePageBreak(id) {
+  var el = document.getElementById('pb-' + id);
+  if (el) {
+    el.classList.toggle('active');
+    _pdfCanvas = null; /* キャッシュ無効化 */
+  }
+}
+
+/* キャッシュ済みcanvas */
+var _pdfCanvas = null;
 
 /* jsPDF・html2canvas をクリック時に動的ロード */
 function loadPdfLibs() {
@@ -969,90 +1028,161 @@ function loadPdfLibs() {
     });
 }
 
-async function generatePdf() {
-  var pdfBtn   = document.getElementById('pdf-btn');
-  pdfBtn.disabled = true;
-  pdfBtn.value    = '読み込み中...';
-
+/* PDF オブジェクトを構築して返す（preview / save 共通） */
+async function buildPdf(statusCb) {
   var reportEl = document.getElementById('view-report');
 
-  try {
-    await loadPdfLibs();
-    pdfBtn.value = 'PDF生成中...';
+  await loadPdfLibs();
+  if (statusCb) statusCb('PDF生成中...');
 
-    /* ページ最上部にスクロールしてから取得 */
-    window.scrollTo(0, 0);
-    await new Promise(function(r) { setTimeout(r, 150); });
+  /* ボタンを一時非表示にしてcanvasキャプチャ */
+  var pbBtns = reportEl.querySelectorAll('.pb-btn');
+  pbBtns.forEach(function(b) { b.style.visibility = 'hidden'; });
 
-    var SCALE  = 2;
-    var canvas = await html2canvas(reportEl, {
+  window.scrollTo(0, 0);
+  await new Promise(function(r) { setTimeout(r, 150); });
+
+  var SCALE = 2;
+  if (!_pdfCanvas) {
+    _pdfCanvas = await html2canvas(reportEl, {
       scale:           SCALE,
       useCORS:         true,
       allowTaint:      true,
       logging:         false,
       backgroundColor: '#ffffff'
     });
+  }
+  var canvas = _pdfCanvas;
 
-    var jsPDF  = window.jspdf.jsPDF;
-    var pdf    = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+  pbBtns.forEach(function(b) { b.style.visibility = ''; });
 
-    var pageW  = pdf.internal.pageSize.getWidth();   /* 210mm */
-    var pageH  = pdf.internal.pageSize.getHeight();  /* 297mm */
-    var margin = 10;
-    var contW  = pageW - margin * 2;  /* 190mm */
-    var contH  = pageH - margin * 2;  /* 277mm */
+  var jsPDF  = window.jspdf.jsPDF;
+  var pdf    = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
 
-    var cssW   = canvas.width  / SCALE;  /* 報告書のCSS幅(px) */
-    var cssH   = canvas.height / SCALE;  /* 報告書のCSS全高(px) */
-    var pxToMm = contW / cssW;           /* 1px → mm */
-    var totalH = cssH * pxToMm;          /* PDF上での全高(mm) */
+  var pageW  = pdf.internal.pageSize.getWidth();
+  var pageH  = pdf.internal.pageSize.getHeight();
+  var margin = 10;
+  var contW  = pageW - margin * 2;
+  var contH  = pageH - margin * 2;
 
-    var imgData  = canvas.toDataURL('image/jpeg', 0.85);
-    var numPages = Math.ceil(totalH / contH);
+  var cssW   = canvas.width  / SCALE;
+  var cssH   = canvas.height / SCALE;
+  var pxToMm = contW / cssW;
+  var totalH = cssH * pxToMm;
 
-    /* A4マルチページ書き込み：画像全体を上にずらして各ページに描画 */
-    for (var p = 0; p < numPages; p++) {
-      if (p > 0) pdf.addPage();
-      pdf.addImage(imgData, 'JPEG', margin, margin - p * contH, contW, totalH);
+  /* アクティブな改ページ位置を取得（px、reportEl先頭からの相対座標） */
+  var contRect = reportEl.getBoundingClientRect();
+  var breakYsMm = [];
+  reportEl.querySelectorAll('.page-break-ctrl.active').forEach(function(el) {
+    var r = el.getBoundingClientRect();
+    var relY = r.top - contRect.top;
+    breakYsMm.push(relY * pxToMm);
+  });
+  breakYsMm.sort(function(a, b) { return a - b; });
+
+  /* セクション区切りY座標（mm） */
+  var sectionEdges = [0].concat(breakYsMm).concat([totalH]);
+
+  var imgData = canvas.toDataURL('image/jpeg', 0.85);
+  var firstPage = true;
+
+  for (var si = 0; si < sectionEdges.length - 1; si++) {
+    var secTop = sectionEdges[si];
+    var secBot = sectionEdges[si + 1];
+    var secH   = secBot - secTop;
+    var numPg  = Math.ceil(secH / contH);
+
+    for (var p = 0; p < numPg; p++) {
+      if (!firstPage) pdf.addPage();
+      firstPage = false;
+      /* 画像全体を描画し、見せたい部分だけページ内に収める */
+      var imgY = margin - secTop - p * contH;
+      pdf.addImage(imgData, 'JPEG', margin, imgY, contW, totalH);
     }
+  }
 
-    /* 共有リンクURLをクリッカブルアノテーションとして追加 */
-    var contRect = reportEl.getBoundingClientRect();
-    reportEl.querySelectorAll('a[href]').forEach(function(a) {
-      var url = a.href;
-      if (!url || url.indexOf('javascript') === 0) return;
+  /* 共有リンクURLをクリッカブルアノテーションとして追加 */
+  var totalPages = pdf.getNumberOfPages();
+  reportEl.querySelectorAll('a[href]').forEach(function(a) {
+    var url = a.href;
+    if (!url || url.indexOf('javascript') === 0) return;
 
-      var ar   = a.getBoundingClientRect();
-      var relX = ar.left - contRect.left;
-      var relY = ar.top  - contRect.top;
+    var ar   = a.getBoundingClientRect();
+    var relX = ar.left - contRect.left;
+    var relY = ar.top  - contRect.top;
 
-      var lx   = margin + relX * pxToMm;
-      var lyT  = relY   * pxToMm;
-      var lw   = Math.max(a.offsetWidth  * pxToMm, 10);
-      var lh   = Math.max(a.offsetHeight * pxToMm,  5);
+    var lx  = margin + relX * pxToMm;
+    var lyT = relY * pxToMm;
+    var lw  = Math.max(a.offsetWidth  * pxToMm, 10);
+    var lh  = Math.max(a.offsetHeight * pxToMm,  5);
 
-      var pg   = Math.floor(lyT / contH);
-      var lyPg = margin + lyT - pg * contH;
-
-      if (pg < numPages) {
-        pdf.setPage(pg + 1);
-        pdf.link(lx, lyPg, lw, lh, { url: url });
+    /* どのページ（改ページ考慮）に属するか */
+    var pgNum = 1;
+    var cumPages = 0;
+    for (var si2 = 0; si2 < sectionEdges.length - 1; si2++) {
+      var st2 = sectionEdges[si2];
+      var sb2 = sectionEdges[si2 + 1];
+      var sh2 = sb2 - st2;
+      var np2 = Math.ceil(sh2 / contH);
+      if (lyT >= st2 && lyT < sb2) {
+        var localP = Math.floor((lyT - st2) / contH);
+        pgNum = cumPages + localP + 1;
+        var lyPg = margin + (lyT - st2) - localP * contH;
+        if (pgNum <= totalPages) {
+          pdf.setPage(pgNum);
+          pdf.link(lx, lyPg, lw, lh, { url: url });
+        }
+        break;
       }
-    });
+      cumPages += np2;
+    }
+  });
 
-    /* ファイル名：案件名_作業日.pdf */
+  return pdf;
+}
+
+/* プレビュー：BlobURLを新タブで開く */
+async function previewPdf() {
+  var preBtn = document.getElementById('pdf-preview-btn');
+  var pdfBtn = document.getElementById('pdf-btn');
+  preBtn.disabled = true;
+  pdfBtn.disabled = true;
+  preBtn.value = 'プレビュー生成中...';
+  try {
+    var pdf = await buildPdf(function(msg) { preBtn.value = msg; });
+    var blob = pdf.output('blob');
+    var url  = URL.createObjectURL(blob);
+    window.open(url, '_blank');
+  } catch (e) {
+    console.error('プレビューエラー:', e);
+    alert('プレビュー生成に失敗しました。\nネットワーク接続を確認してください。');
+  } finally {
+    preBtn.disabled = false;
+    pdfBtn.disabled = false;
+    preBtn.value = '🔍 プレビュー';
+  }
+}
+
+async function generatePdf() {
+  var pdfBtn = document.getElementById('pdf-btn');
+  var preBtn = document.getElementById('pdf-preview-btn');
+  pdfBtn.disabled = true;
+  preBtn.disabled = true;
+  pdfBtn.value = '読み込み中...';
+  try {
+    var pdf = await buildPdf(function(msg) { pdfBtn.value = msg; });
     var proj  = val('f-project') || '報告書';
     var dt    = val('f-date')    || '';
     var fname = (proj + (dt ? '_' + dt : '') + '.pdf')
                   .replace(/[\\/:*?"<>|]/g, '_');
     pdf.save(fname);
-
   } catch (e) {
     console.error('PDF生成エラー:', e);
     alert('PDF生成に失敗しました。\nネットワーク接続を確認してください。');
   } finally {
     pdfBtn.disabled = false;
-    pdfBtn.value    = '📄 PDFで保存';
+    preBtn.disabled = false;
+    pdfBtn.value = '📄 PDFで保存';
   }
 }
 

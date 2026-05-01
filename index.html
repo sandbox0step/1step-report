@@ -255,53 +255,32 @@
     <div>
       <label style="margin:0 0 4px;font-size:14px;">① 看板写真</label>
       <div id="prev-sign" class="prev"></div>
-      <input type="file" id="sign-file" accept="image/*" multiple style="display:none"
-        onchange="handleFileSelect(this,'prev-sign',5)">
+      <input type="file" id="sign-file" accept="image/*" style="display:none"
+        onchange="handleFileSelect(this,'prev-sign',1)">
       <button type="button" onclick="document.getElementById('sign-file').click()"
         style="display:block;width:100%;padding:8px 4px;font-size:12px;background:#e8f5ec;color:#1a5c2a;border:2px dashed #2e7d45;border-radius:6px;cursor:pointer;-webkit-appearance:none;box-sizing:border-box;">
-        📷 選択（最大5枚）
+        📷 選択
       </button>
-      <div style="display:flex;gap:2px;margin-top:4px;">
-        <input type="text" id="url-sign" placeholder="URL入力"
-          style="flex:1;min-width:0;font-size:11px;padding:4px;border:1px solid #bbb;border-radius:4px;box-sizing:border-box;color:#000;background:#fff;"
-          onkeydown="if(event.key==='Enter'){addUrlFromInput('url-sign','prev-sign',5);event.preventDefault()}">
-        <button type="button" onclick="addUrlFromInput('url-sign','prev-sign',5)"
-          style="padding:4px 6px;font-size:11px;background:#e8f0fe;color:#1565c0;border:1px solid #90caf9;border-radius:4px;cursor:pointer;-webkit-appearance:none;white-space:nowrap;flex-shrink:0;">追加</button>
-      </div>
     </div>
     <div>
       <label style="margin:0 0 4px;font-size:14px;">② 全景（作業前）</label>
       <div id="prev-before" class="prev"></div>
-      <input type="file" id="before-file" accept="image/*" multiple style="display:none"
-        onchange="handleFileSelect(this,'prev-before',5)">
+      <input type="file" id="before-file" accept="image/*" style="display:none"
+        onchange="handleFileSelect(this,'prev-before',1)">
       <button type="button" onclick="document.getElementById('before-file').click()"
         style="display:block;width:100%;padding:8px 4px;font-size:12px;background:#e8f5ec;color:#1a5c2a;border:2px dashed #2e7d45;border-radius:6px;cursor:pointer;-webkit-appearance:none;box-sizing:border-box;">
-        📷 選択（最大5枚）
+        📷 選択
       </button>
-      <div style="display:flex;gap:2px;margin-top:4px;">
-        <input type="text" id="url-before" placeholder="URL入力"
-          style="flex:1;min-width:0;font-size:11px;padding:4px;border:1px solid #bbb;border-radius:4px;box-sizing:border-box;color:#000;background:#fff;"
-          onkeydown="if(event.key==='Enter'){addUrlFromInput('url-before','prev-before',5);event.preventDefault()}">
-        <button type="button" onclick="addUrlFromInput('url-before','prev-before',5)"
-          style="padding:4px 6px;font-size:11px;background:#e8f0fe;color:#1565c0;border:1px solid #90caf9;border-radius:4px;cursor:pointer;-webkit-appearance:none;white-space:nowrap;flex-shrink:0;">追加</button>
-      </div>
     </div>
     <div>
       <label style="margin:0 0 4px;font-size:14px;">③ 全景（作業後）</label>
       <div id="prev-after" class="prev"></div>
-      <input type="file" id="after-file" accept="image/*" multiple style="display:none"
-        onchange="handleFileSelect(this,'prev-after',5)">
+      <input type="file" id="after-file" accept="image/*" style="display:none"
+        onchange="handleFileSelect(this,'prev-after',1)">
       <button type="button" onclick="document.getElementById('after-file').click()"
         style="display:block;width:100%;padding:8px 4px;font-size:12px;background:#e8f5ec;color:#1a5c2a;border:2px dashed #2e7d45;border-radius:6px;cursor:pointer;-webkit-appearance:none;box-sizing:border-box;">
-        📷 選択（最大5枚）
+        📷 選択
       </button>
-      <div style="display:flex;gap:2px;margin-top:4px;">
-        <input type="text" id="url-after" placeholder="URL入力"
-          style="flex:1;min-width:0;font-size:11px;padding:4px;border:1px solid #bbb;border-radius:4px;box-sizing:border-box;color:#000;background:#fff;"
-          onkeydown="if(event.key==='Enter'){addUrlFromInput('url-after','prev-after',5);event.preventDefault()}">
-        <button type="button" onclick="addUrlFromInput('url-after','prev-after',5)"
-          style="padding:4px 6px;font-size:11px;background:#e8f0fe;color:#1565c0;border:1px solid #90caf9;border-radius:4px;cursor:pointer;-webkit-appearance:none;white-space:nowrap;flex-shrink:0;">追加</button>
-      </div>
     </div>
   </div>
 

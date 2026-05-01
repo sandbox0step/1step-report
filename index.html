@@ -261,6 +261,13 @@
         style="display:block;width:100%;padding:8px 4px;font-size:12px;background:#e8f5ec;color:#1a5c2a;border:2px dashed #2e7d45;border-radius:6px;cursor:pointer;-webkit-appearance:none;box-sizing:border-box;">
         📷 選択（最大5枚）
       </button>
+      <div style="display:flex;gap:2px;margin-top:4px;">
+        <input type="text" id="url-sign" placeholder="URL入力"
+          style="flex:1;min-width:0;font-size:11px;padding:4px;border:1px solid #bbb;border-radius:4px;box-sizing:border-box;color:#000;background:#fff;"
+          onkeydown="if(event.key==='Enter'){addUrlFromInput('url-sign','prev-sign',5);event.preventDefault()}">
+        <button type="button" onclick="addUrlFromInput('url-sign','prev-sign',5)"
+          style="padding:4px 6px;font-size:11px;background:#e8f0fe;color:#1565c0;border:1px solid #90caf9;border-radius:4px;cursor:pointer;-webkit-appearance:none;white-space:nowrap;flex-shrink:0;">追加</button>
+      </div>
     </div>
     <div>
       <label style="margin:0 0 4px;font-size:14px;">② 全景（作業前）</label>
@@ -271,6 +278,13 @@
         style="display:block;width:100%;padding:8px 4px;font-size:12px;background:#e8f5ec;color:#1a5c2a;border:2px dashed #2e7d45;border-radius:6px;cursor:pointer;-webkit-appearance:none;box-sizing:border-box;">
         📷 選択（最大5枚）
       </button>
+      <div style="display:flex;gap:2px;margin-top:4px;">
+        <input type="text" id="url-before" placeholder="URL入力"
+          style="flex:1;min-width:0;font-size:11px;padding:4px;border:1px solid #bbb;border-radius:4px;box-sizing:border-box;color:#000;background:#fff;"
+          onkeydown="if(event.key==='Enter'){addUrlFromInput('url-before','prev-before',5);event.preventDefault()}">
+        <button type="button" onclick="addUrlFromInput('url-before','prev-before',5)"
+          style="padding:4px 6px;font-size:11px;background:#e8f0fe;color:#1565c0;border:1px solid #90caf9;border-radius:4px;cursor:pointer;-webkit-appearance:none;white-space:nowrap;flex-shrink:0;">追加</button>
+      </div>
     </div>
     <div>
       <label style="margin:0 0 4px;font-size:14px;">③ 全景（作業後）</label>
@@ -281,6 +295,13 @@
         style="display:block;width:100%;padding:8px 4px;font-size:12px;background:#e8f5ec;color:#1a5c2a;border:2px dashed #2e7d45;border-radius:6px;cursor:pointer;-webkit-appearance:none;box-sizing:border-box;">
         📷 選択（最大5枚）
       </button>
+      <div style="display:flex;gap:2px;margin-top:4px;">
+        <input type="text" id="url-after" placeholder="URL入力"
+          style="flex:1;min-width:0;font-size:11px;padding:4px;border:1px solid #bbb;border-radius:4px;box-sizing:border-box;color:#000;background:#fff;"
+          onkeydown="if(event.key==='Enter'){addUrlFromInput('url-after','prev-after',5);event.preventDefault()}">
+        <button type="button" onclick="addUrlFromInput('url-after','prev-after',5)"
+          style="padding:4px 6px;font-size:11px;background:#e8f0fe;color:#1565c0;border:1px solid #90caf9;border-radius:4px;cursor:pointer;-webkit-appearance:none;white-space:nowrap;flex-shrink:0;">追加</button>
+      </div>
     </div>
   </div>
 
@@ -313,6 +334,13 @@
     style="display:block;width:100%;padding:12px;font-size:15px;background:#e8f5ec;color:#1a5c2a;border:2px dashed #2e7d45;border-radius:6px;cursor:pointer;-webkit-appearance:none;box-sizing:border-box;margin-bottom:6px;">
     📷 写真を選択（最大5枚）
   </button>
+  <div style="display:flex;gap:4px;margin-bottom:6px;">
+    <input type="text" id="url-figh" placeholder="URLを入力してEnter"
+      style="flex:1;font-size:14px;padding:8px;border:1px solid #bbb;border-radius:4px;box-sizing:border-box;color:#000;background:#fff;"
+      onkeydown="if(event.key==='Enter'){addUrlFromInput('url-figh','prev-figh',5);event.preventDefault()}">
+    <button type="button" onclick="addUrlFromInput('url-figh','prev-figh',5)"
+      style="padding:8px 12px;font-size:13px;background:#e8f0fe;color:#1565c0;border:1px solid #90caf9;border-radius:4px;cursor:pointer;-webkit-appearance:none;white-space:nowrap;">🔗 追加</button>
+  </div>
   <label>薬剤名・濃度・散布量など</label>
   <textarea id="f-herbicide" placeholder="例：ラウンドアップ 50倍希釈 各エリア 2L"></textarea>
   <h3>次回作業の提案（提案箇所写真）</h3>
@@ -323,6 +351,13 @@
     style="display:block;width:100%;padding:12px;font-size:15px;background:#e8f5ec;color:#1a5c2a;border:2px dashed #2e7d45;border-radius:6px;cursor:pointer;-webkit-appearance:none;box-sizing:border-box;margin-bottom:6px;">
     📷 写真を選択（最大5枚）
   </button>
+  <div style="display:flex;gap:4px;margin-bottom:6px;">
+    <input type="text" id="url-figp" placeholder="URLを入力してEnter"
+      style="flex:1;font-size:14px;padding:8px;border:1px solid #bbb;border-radius:4px;box-sizing:border-box;color:#000;background:#fff;"
+      onkeydown="if(event.key==='Enter'){addUrlFromInput('url-figp','prev-figp',5);event.preventDefault()}">
+    <button type="button" onclick="addUrlFromInput('url-figp','prev-figp',5)"
+      style="padding:8px 12px;font-size:13px;background:#e8f0fe;color:#1565c0;border:1px solid #90caf9;border-radius:4px;cursor:pointer;-webkit-appearance:none;white-space:nowrap;">🔗 追加</button>
+  </div>
   <label>次回提案内容</label>
   <textarea id="f-proposal" placeholder="例：次回推奨は6月上旬"></textarea>
   <label>備考・連絡事項</label>
@@ -406,6 +441,53 @@ function addFilePreview(file, box) {
   wrap.appendChild(img);
   wrap.appendChild(btn);
   box.appendChild(wrap);
+}
+
+/* URLからプレビューを追加 */
+function addUrlPreview(url, box) {
+  var wrap = document.createElement('div');
+  wrap.className = 'prev-item';
+  var img = document.createElement('img');
+  img.src = url;
+  img.title = 'タップで拡大';
+  img.style.cursor = 'pointer';
+  img.onclick = (function(u) { return function() { window.open(u, '_blank'); }; })(url);
+  var btn = document.createElement('button');
+  btn.className = 'prev-del';
+  btn.textContent = '×';
+  btn.onclick = function() { wrap.remove(); };
+  wrap.appendChild(img);
+  wrap.appendChild(btn);
+  box.appendChild(wrap);
+}
+
+/* URL入力欄からプレビュー追加（上限maxCount枚）
+   autoExtractId: 全景写真欄が空なら1枚目を自動コピー */
+function addUrlFromInput(inputId, prevId, maxCount, autoExtractId) {
+  var input = document.getElementById(inputId);
+  if (!input) return;
+  var url = input.value.trim();
+  if (!url) return;
+  if (!/^https?:\/\//.test(url)) {
+    alert('URLはhttp://またはhttps://で始めてください');
+    return;
+  }
+  var box = document.getElementById(prevId);
+  if (!box) return;
+  var current = box.querySelectorAll('.prev-item').length;
+  if (current >= maxCount) {
+    alert('写真は最大' + maxCount + '枚まで選択できます（現在' + current + '枚）');
+    return;
+  }
+  var wasEmpty = (current === 0);
+  addUrlPreview(url, box);
+  if (wasEmpty && autoExtractId) {
+    var extractBox = document.getElementById(autoExtractId);
+    if (extractBox && extractBox.querySelectorAll('.prev-item').length === 0) {
+      addUrlPreview(url, extractBox);
+    }
+  }
+  input.value = '';
 }
 
 /* ファイル選択 → プレビュー追加（上限maxCount枚）
@@ -678,6 +760,9 @@ var areaCounter = 0;
 function addArea() {
   areaCounter++;
   var id = areaCounter;
+  /* エリア1のみ全景写真へ自動反映。エリア2以降は反映しない */
+  var autoB = (id === 1) ? ",'prev-before'" : '';
+  var autoA = (id === 1) ? ",'prev-after'" : '';
   var container = document.getElementById('areas-container');
   var div = document.createElement('div');
   div.id = 'area-block-' + id;
@@ -688,11 +773,11 @@ function addArea() {
     '</div>' +
     '<h3>草刈り作業前（Before）</h3>' +
     '<div id="prev-fi' + id + 'b" class="prev"></div>' +
-    '<input type="file" id="file-fi' + id + 'b" accept="image/*" multiple style="display:none" onchange="handleFileSelect(this,\'prev-fi' + id + 'b\',5,\'prev-before\')">' +
+    '<input type="file" id="file-fi' + id + 'b" accept="image/*" multiple style="display:none" onchange="handleFileSelect(this,\'prev-fi' + id + 'b\',5' + autoB + ')">' +
     '<button type="button" onclick="document.getElementById(\'file-fi' + id + 'b\').click()" style="display:block;width:100%;padding:10px;font-size:14px;background:#e8f5ec;color:#1a5c2a;border:2px dashed #2e7d45;border-radius:6px;cursor:pointer;-webkit-appearance:none;box-sizing:border-box;margin-bottom:6px;">📷 写真を選択（最大5枚）</button>' +
     '<h3>草刈り作業後（After）</h3>' +
     '<div id="prev-fi' + id + 'a" class="prev"></div>' +
-    '<input type="file" id="file-fi' + id + 'a" accept="image/*" multiple style="display:none" onchange="handleFileSelect(this,\'prev-fi' + id + 'a\',5,\'prev-after\')">' +
+    '<input type="file" id="file-fi' + id + 'a" accept="image/*" multiple style="display:none" onchange="handleFileSelect(this,\'prev-fi' + id + 'a\',5' + autoA + ')">' +
     '<button type="button" onclick="document.getElementById(\'file-fi' + id + 'a\').click()" style="display:block;width:100%;padding:10px;font-size:14px;background:#e8f5ec;color:#1a5c2a;border:2px dashed #2e7d45;border-radius:6px;cursor:pointer;-webkit-appearance:none;box-sizing:border-box;margin-bottom:6px;">📷 写真を選択（最大5枚）</button>' +
     '<h3>除草剤散布後（現状）</h3>' +
     '<div id="prev-fi' + id + 'h" class="prev"></div>' +

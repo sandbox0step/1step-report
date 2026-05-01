@@ -1041,13 +1041,24 @@ function loadPdfLibs() {
 /* PDF オブジェクトを構築して返す（preview / save 共通） */
 async function buildPdf(statusCb) {
   var reportEl = document.getElementById('view-report');
+  /* A4換算の固定キャプチャ幅。スマホでは reportEl がビューポート幅で
+     描画されるため pxToMm がデバイスごとに変わり、ページ境界がズレる。
+     常に720px固定でレイアウト→キャプチャすることで機種差をなくす。 */
+  var PDF_W = 720;
 
   await loadPdfLibs();
   if (statusCb) statusCb('PDF生成中...');
 
-  /* ① スクロールをリセットしてレイアウトを確定 */
+  /* ① A4換算の固定幅を強制適用してリフロー待ち */
+  var savedW    = reportEl.style.width;
+  var savedMinW = reportEl.style.minWidth;
+  var savedMaxW = reportEl.style.maxWidth;
+  reportEl.style.width    = PDF_W + 'px';
+  reportEl.style.minWidth = PDF_W + 'px';
+  reportEl.style.maxWidth = PDF_W + 'px';
+
   window.scrollTo(0, 0);
-  await new Promise(function(r) { setTimeout(r, 150); });
+  await new Promise(function(r) { setTimeout(r, 200); });
 
   /* ② canvas キャプチャ前に位置を計測
         html2canvas はキャプチャ中にスクロールを変えるため、
@@ -1076,7 +1087,7 @@ async function buildPdf(statusCb) {
     });
   });
 
-  /* ③ pb-btn を非表示にしてキャプチャ（レイアウトに影響しない visibility） */
+  /* ③ pb-btn を非表示にしてキャプチャ */
   var pbBtns = reportEl.querySelectorAll('.pb-btn');
   pbBtns.forEach(function(b) { b.style.visibility = 'hidden'; });
 
@@ -1087,14 +1098,20 @@ async function buildPdf(statusCb) {
       useCORS:         true,
       allowTaint:      true,
       logging:         false,
-      backgroundColor: '#ffffff'
+      backgroundColor: '#ffffff',
+      windowWidth:     PDF_W   /* メディアクエリなどにも一貫した幅を渡す */
     });
   }
   var canvas = _pdfCanvas;
 
   pbBtns.forEach(function(b) { b.style.visibility = ''; });
 
-  /* ④ jsPDF 初期化 */
+  /* ④ キャプチャ完了後にスタイルを元に戻す */
+  reportEl.style.width    = savedW;
+  reportEl.style.minWidth = savedMinW;
+  reportEl.style.maxWidth = savedMaxW;
+
+  /* ⑤ jsPDF 初期化 */
   var jsPDF  = window.jspdf.jsPDF;
   var pdf    = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
 
@@ -1109,7 +1126,7 @@ async function buildPdf(statusCb) {
   var pxToMm   = contW / cssW;           /* px→mm変換率 */
   var totalHmm = cssH * pxToMm;
 
-  /* ⑤ 改ページ位置をmmに変換してページスライス一覧を生成
+  /* ⑥ 改ページ位置をmmに変換してページスライス一覧を生成
         改ページボタンの位置でセクションを区切り、
         各セクションが A4 を超える場合は自然に複数ページに分割する */
   var breakYsMm = breakYsPx.map(function(py) { return py * pxToMm; });
@@ -1130,7 +1147,7 @@ async function buildPdf(statusCb) {
     }
   }
 
-  /* ⑥ 各ページを canvas のスライスで描画（フル画像オフセットではなく切り出し） */
+  /* ⑦ 各ページを canvas のスライスで描画（フル画像オフセットではなく切り出し） */
   for (var pi = 0; pi < pageSlices.length; pi++) {
     if (pi > 0) pdf.addPage();
     var ps   = pageSlices[pi];
@@ -1150,7 +1167,7 @@ async function buildPdf(statusCb) {
     pdf.addImage(sc.toDataURL('image/jpeg', 0.85), 'JPEG', margin, margin, contW, sliceHmm);
   }
 
-  /* ⑦ 共有リンクURLをクリッカブルアノテーションとして追加 */
+  /* ⑧ 共有リンクURLをクリッカブルアノテーションとして追加 */
   linkData.forEach(function(ld) {
     var lxMm = margin + ld.relX * pxToMm;
     var lyMm = ld.relY * pxToMm;

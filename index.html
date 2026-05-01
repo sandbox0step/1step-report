@@ -192,8 +192,16 @@
       border: 1px solid #ffb300; font-weight: bold;
     }
     .page-break-ctrl.active::before {
-      content: ''; position: absolute; left: 0; right: 0; top: 0;
-      border-top: 2px dashed #ffb300;
+      content: ''; position: absolute; left: -12px; right: -12px; top: 0;
+      border-top: 3px dashed #ffb300; z-index: 4;
+    }
+    .page-break-ctrl.active::after {
+      content: '✂ 改ページ ✂';
+      position: absolute; left: 50%; top: 3px;
+      transform: translateX(-50%);
+      font-size: 10px; color: #e65100;
+      background: #fff8e1; padding: 0 8px;
+      white-space: nowrap; pointer-events: none; z-index: 6;
     }
     @media print { .page-break-ctrl { display: none !important; } }
 
@@ -1001,10 +1009,12 @@ function pbCtrl(id) {
 /* 改ページトグル */
 function togglePageBreak(id) {
   var el = document.getElementById('pb-' + id);
-  if (el) {
-    el.classList.toggle('active');
-    _pdfCanvas = null; /* キャッシュ無効化 */
-  }
+  if (!el) return;
+  var nowActive = !el.classList.contains('active');
+  el.classList.toggle('active');
+  var btn = el.querySelector('.pb-btn');
+  if (btn) btn.textContent = nowActive ? 'ここで改ページ（タップで解除）' : 'ここで改ページ';
+  _pdfCanvas = null;
 }
 
 /* キャッシュ済みcanvas */
@@ -1035,12 +1045,40 @@ async function buildPdf(statusCb) {
   await loadPdfLibs();
   if (statusCb) statusCb('PDF生成中...');
 
-  /* ボタンを一時非表示にしてcanvasキャプチャ */
-  var pbBtns = reportEl.querySelectorAll('.pb-btn');
-  pbBtns.forEach(function(b) { b.style.visibility = 'hidden'; });
-
+  /* ① スクロールをリセットしてレイアウトを確定 */
   window.scrollTo(0, 0);
   await new Promise(function(r) { setTimeout(r, 150); });
+
+  /* ② canvas キャプチャ前に位置を計測
+        html2canvas はキャプチャ中にスクロールを変えるため、
+        キャプチャ後に getBoundingClientRect() を呼ぶと座標がズレる */
+  var contRect = reportEl.getBoundingClientRect();
+
+  var breakYsPx = [];
+  reportEl.querySelectorAll('.page-break-ctrl.active').forEach(function(el) {
+    var r = el.getBoundingClientRect();
+    var relY = r.top - contRect.top;
+    if (relY > 0) breakYsPx.push(relY);
+  });
+  breakYsPx.sort(function(a, b) { return a - b; });
+
+  var linkData = [];
+  reportEl.querySelectorAll('a[href]').forEach(function(a) {
+    var url = a.href;
+    if (!url || url.indexOf('javascript') === 0) return;
+    var ar = a.getBoundingClientRect();
+    linkData.push({
+      url:  url,
+      relX: ar.left - contRect.left,
+      relY: ar.top  - contRect.top,
+      w:    Math.max(a.offsetWidth,  10),
+      h:    Math.max(a.offsetHeight,  5)
+    });
+  });
+
+  /* ③ pb-btn を非表示にしてキャプチャ（レイアウトに影響しない visibility） */
+  var pbBtns = reportEl.querySelectorAll('.pb-btn');
+  pbBtns.forEach(function(b) { b.style.visibility = 'hidden'; });
 
   var SCALE = 2;
   if (!_pdfCanvas) {
@@ -1056,85 +1094,76 @@ async function buildPdf(statusCb) {
 
   pbBtns.forEach(function(b) { b.style.visibility = ''; });
 
+  /* ④ jsPDF 初期化 */
   var jsPDF  = window.jspdf.jsPDF;
   var pdf    = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
 
-  var pageW  = pdf.internal.pageSize.getWidth();
-  var pageH  = pdf.internal.pageSize.getHeight();
+  var pageW  = pdf.internal.pageSize.getWidth();   /* 210mm */
+  var pageH  = pdf.internal.pageSize.getHeight();  /* 297mm */
   var margin = 10;
-  var contW  = pageW - margin * 2;
-  var contH  = pageH - margin * 2;
+  var contW  = pageW - margin * 2;  /* 190mm */
+  var contH  = pageH - margin * 2;  /* 277mm */
 
-  var cssW   = canvas.width  / SCALE;
-  var cssH   = canvas.height / SCALE;
-  var pxToMm = contW / cssW;
-  var totalH = cssH * pxToMm;
+  var cssW     = canvas.width  / SCALE;  /* CSS幅px */
+  var cssH     = canvas.height / SCALE;  /* CSS高px */
+  var pxToMm   = contW / cssW;           /* px→mm変換率 */
+  var totalHmm = cssH * pxToMm;
 
-  /* アクティブな改ページ位置を取得（px、reportEl先頭からの相対座標） */
-  var contRect = reportEl.getBoundingClientRect();
-  var breakYsMm = [];
-  reportEl.querySelectorAll('.page-break-ctrl.active').forEach(function(el) {
-    var r = el.getBoundingClientRect();
-    var relY = r.top - contRect.top;
-    breakYsMm.push(relY * pxToMm);
-  });
-  breakYsMm.sort(function(a, b) { return a - b; });
+  /* ⑤ 改ページ位置をmmに変換してページスライス一覧を生成
+        改ページボタンの位置でセクションを区切り、
+        各セクションが A4 を超える場合は自然に複数ページに分割する */
+  var breakYsMm = breakYsPx.map(function(py) { return py * pxToMm; });
 
-  /* セクション区切りY座標（mm） */
-  var sectionEdges = [0].concat(breakYsMm).concat([totalH]);
+  var sectionStarts = [0].concat(breakYsMm);
+  var pageSlices = [];  /* [{ startMm, endMm }] */
 
-  var imgData = canvas.toDataURL('image/jpeg', 0.85);
-  var firstPage = true;
-
-  for (var si = 0; si < sectionEdges.length - 1; si++) {
-    var secTop = sectionEdges[si];
-    var secBot = sectionEdges[si + 1];
-    var secH   = secBot - secTop;
-    var numPg  = Math.ceil(secH / contH);
-
+  for (var si = 0; si < sectionStarts.length; si++) {
+    var secStart = sectionStarts[si];
+    var secEnd   = (si + 1 < sectionStarts.length) ? sectionStarts[si + 1] : totalHmm;
+    var secH     = secEnd - secStart;
+    var numPg    = Math.max(1, Math.ceil(secH / contH));
     for (var p = 0; p < numPg; p++) {
-      if (!firstPage) pdf.addPage();
-      firstPage = false;
-      /* 画像全体を描画し、見せたい部分だけページ内に収める */
-      var imgY = margin - secTop - p * contH;
-      pdf.addImage(imgData, 'JPEG', margin, imgY, contW, totalH);
+      pageSlices.push({
+        startMm: secStart + p * contH,
+        endMm:   Math.min(secStart + (p + 1) * contH, secEnd)
+      });
     }
   }
 
-  /* 共有リンクURLをクリッカブルアノテーションとして追加 */
-  var totalPages = pdf.getNumberOfPages();
-  reportEl.querySelectorAll('a[href]').forEach(function(a) {
-    var url = a.href;
-    if (!url || url.indexOf('javascript') === 0) return;
+  /* ⑥ 各ページを canvas のスライスで描画（フル画像オフセットではなく切り出し） */
+  for (var pi = 0; pi < pageSlices.length; pi++) {
+    if (pi > 0) pdf.addPage();
+    var ps   = pageSlices[pi];
+    var srcY = Math.round(ps.startMm / pxToMm * SCALE);
+    var srcH = Math.round((ps.endMm - ps.startMm) / pxToMm * SCALE);
+    if (srcH < 1) srcH = 1;
 
-    var ar   = a.getBoundingClientRect();
-    var relX = ar.left - contRect.left;
-    var relY = ar.top  - contRect.top;
+    var sc  = document.createElement('canvas');
+    sc.width  = canvas.width;
+    sc.height = srcH;
+    var ctx   = sc.getContext('2d');
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, sc.width, sc.height);
+    ctx.drawImage(canvas, 0, srcY, canvas.width, srcH, 0, 0, canvas.width, srcH);
 
-    var lx  = margin + relX * pxToMm;
-    var lyT = relY * pxToMm;
-    var lw  = Math.max(a.offsetWidth  * pxToMm, 10);
-    var lh  = Math.max(a.offsetHeight * pxToMm,  5);
+    var sliceHmm = (srcH / SCALE) * pxToMm;
+    pdf.addImage(sc.toDataURL('image/jpeg', 0.85), 'JPEG', margin, margin, contW, sliceHmm);
+  }
 
-    /* どのページ（改ページ考慮）に属するか */
-    var pgNum = 1;
-    var cumPages = 0;
-    for (var si2 = 0; si2 < sectionEdges.length - 1; si2++) {
-      var st2 = sectionEdges[si2];
-      var sb2 = sectionEdges[si2 + 1];
-      var sh2 = sb2 - st2;
-      var np2 = Math.ceil(sh2 / contH);
-      if (lyT >= st2 && lyT < sb2) {
-        var localP = Math.floor((lyT - st2) / contH);
-        pgNum = cumPages + localP + 1;
-        var lyPg = margin + (lyT - st2) - localP * contH;
-        if (pgNum <= totalPages) {
-          pdf.setPage(pgNum);
-          pdf.link(lx, lyPg, lw, lh, { url: url });
-        }
+  /* ⑦ 共有リンクURLをクリッカブルアノテーションとして追加 */
+  linkData.forEach(function(ld) {
+    var lxMm = margin + ld.relX * pxToMm;
+    var lyMm = ld.relY * pxToMm;
+    var lwMm = ld.w * pxToMm;
+    var lhMm = ld.h * pxToMm;
+
+    for (var pi = 0; pi < pageSlices.length; pi++) {
+      var ps = pageSlices[pi];
+      if (lyMm >= ps.startMm && lyMm < ps.endMm) {
+        pdf.setPage(pi + 1);
+        pdf.link(lxMm, margin + (lyMm - ps.startMm), lwMm, lhMm, { url: ld.url });
         break;
       }
-      cumPages += np2;
     }
   });
 

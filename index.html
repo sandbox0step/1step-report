@@ -302,47 +302,11 @@
   <div id="areas-container"></div>
   <button type="button" class="add-area-btn" onclick="addArea()">＋ エリアを追加</button>
 
-  <h2>全体所見 / 除草剤 / 提案 / 備考</h2>
-  <label>全体所見・気づいた点</label>
-  <textarea id="f-overview" placeholder="全エリアまとめての所見"></textarea>
-  <h3>除草剤使用記録（散布状況写真）</h3>
-  <div id="prev-figh" class="prev"></div>
-  <input type="file" id="figh-file" accept="image/*" multiple style="display:none"
-    onchange="handleFileSelect(this,'prev-figh',5)">
-  <button type="button" onclick="document.getElementById('figh-file').click()"
-    style="display:block;width:100%;padding:12px;font-size:15px;background:#e8f5ec;color:#1a5c2a;border:2px dashed #2e7d45;border-radius:6px;cursor:pointer;-webkit-appearance:none;box-sizing:border-box;margin-bottom:6px;">
-    📷 写真を選択（最大5枚）
-  </button>
-  <div style="display:flex;gap:4px;margin-bottom:6px;">
-    <input type="text" id="url-figh" placeholder="URLを入力してEnter"
-      style="flex:1;font-size:14px;padding:8px;border:1px solid #bbb;border-radius:4px;box-sizing:border-box;color:#000;background:#fff;"
-      onkeydown="if(event.key==='Enter'){addUrlFromInput('url-figh','prev-figh',5);event.preventDefault()}">
-    <button type="button" onclick="addUrlFromInput('url-figh','prev-figh',5)"
-      style="padding:8px 12px;font-size:13px;background:#e8f0fe;color:#1565c0;border:1px solid #90caf9;border-radius:4px;cursor:pointer;-webkit-appearance:none;white-space:nowrap;">🔗 追加</button>
-  </div>
-  <label>薬剤名・濃度・散布量など</label>
-  <textarea id="f-herbicide" placeholder="例：ラウンドアップ 50倍希釈 各エリア 2L"></textarea>
-  <h3>次回作業の提案（提案箇所写真）</h3>
-  <div id="prev-figp" class="prev"></div>
-  <input type="file" id="figp-file" accept="image/*" multiple style="display:none"
-    onchange="handleFileSelect(this,'prev-figp',5)">
-  <button type="button" onclick="document.getElementById('figp-file').click()"
-    style="display:block;width:100%;padding:12px;font-size:15px;background:#e8f5ec;color:#1a5c2a;border:2px dashed #2e7d45;border-radius:6px;cursor:pointer;-webkit-appearance:none;box-sizing:border-box;margin-bottom:6px;">
-    📷 写真を選択（最大5枚）
-  </button>
-  <div style="display:flex;gap:4px;margin-bottom:6px;">
-    <input type="text" id="url-figp" placeholder="URLを入力してEnter"
-      style="flex:1;font-size:14px;padding:8px;border:1px solid #bbb;border-radius:4px;box-sizing:border-box;color:#000;background:#fff;"
-      onkeydown="if(event.key==='Enter'){addUrlFromInput('url-figp','prev-figp',5);event.preventDefault()}">
-    <button type="button" onclick="addUrlFromInput('url-figp','prev-figp',5)"
-      style="padding:8px 12px;font-size:13px;background:#e8f0fe;color:#1565c0;border:1px solid #90caf9;border-radius:4px;cursor:pointer;-webkit-appearance:none;white-space:nowrap;">🔗 追加</button>
-  </div>
-  <label>次回提案内容</label>
-  <textarea id="f-proposal" placeholder="例：次回推奨は6月上旬"></textarea>
+  <h2>備考</h2>
   <label>備考・連絡事項</label>
   <textarea id="f-remarks" placeholder="例：散布後2時間は立入禁止"></textarea>
-  <label>iCloud 共有リンク URL（任意）</label>
-  <input type="text" id="f-icloud" placeholder="https://www.icloud.com/photos/...">
+  <label>共有リンクURL（iCloud / Googleフォト）</label>
+  <input type="text" id="f-icloud" placeholder="https://www.icloud.com/photos/... または https://photos.google.com/...">
 
   <!-- 生成ボタン -->
   <input type="button" class="gen-btn" value="報告書を生成" onclick="generateReport()">
@@ -762,6 +726,10 @@ function addArea() {
     '<div id="prev-fi' + id + 'h" class="prev"></div>' +
     '<input type="file" id="file-fi' + id + 'h" accept="image/*" multiple style="display:none" onchange="handleFileSelect(this,\'prev-fi' + id + 'h\',5)">' +
     '<button type="button" onclick="document.getElementById(\'file-fi' + id + 'h\').click()" style="display:block;width:100%;padding:10px;font-size:14px;background:#e8f5ec;color:#1a5c2a;border:2px dashed #2e7d45;border-radius:6px;cursor:pointer;-webkit-appearance:none;box-sizing:border-box;margin-bottom:6px;">📷 写真を選択（最大5枚）</button>' +
+    '<label>異常箇所写真</label>' +
+    '<div id="prev-fi' + id + 'n" class="prev"></div>' +
+    '<input type="file" id="file-fi' + id + 'n" accept="image/*" multiple style="display:none" onchange="handleFileSelect(this,\'prev-fi' + id + 'n\',5)">' +
+    '<button type="button" onclick="document.getElementById(\'file-fi' + id + 'n\').click()" style="display:block;width:100%;padding:10px;font-size:14px;background:#e8f5ec;color:#1a5c2a;border:2px dashed #2e7d45;border-radius:6px;cursor:pointer;-webkit-appearance:none;box-sizing:border-box;margin-bottom:6px;">📷 写真を選択（最大5枚）</button>' +
     '<label>所見・気づいた点</label>' +
     '<textarea id="notes-' + id + '" placeholder="エリア' + id + 'で気づいた点を記入してください"></textarea>';
   container.appendChild(div);
@@ -800,11 +768,12 @@ function buildReportData() {
   areaBlocks.forEach(function(block) {
     var k = block.id.replace('area-block-', '');
     areas.push({
-      areaId:       k,
-      photosBefore: document.querySelectorAll('#prev-fi' + k + 'b .prev-item img').length,
-      photosAfter:  document.querySelectorAll('#prev-fi' + k + 'a .prev-item img').length,
-      photosHerb:   document.querySelectorAll('#prev-fi' + k + 'h .prev-item img').length,
-      notes:        val('notes-' + k)
+      areaId:          k,
+      photosBefore:    document.querySelectorAll('#prev-fi' + k + 'b .prev-item img').length,
+      photosAfter:     document.querySelectorAll('#prev-fi' + k + 'a .prev-item img').length,
+      photosHerb:      document.querySelectorAll('#prev-fi' + k + 'h .prev-item img').length,
+      photosAbnormal:  document.querySelectorAll('#prev-fi' + k + 'n .prev-item img').length,
+      notes:           val('notes-' + k)
     });
   });
   return {
@@ -820,9 +789,6 @@ function buildReportData() {
     workers:     val('f-workers'),
     staff:       val('f-staff'),
     areas:       areas,
-    overview:    val('f-overview'),
-    herbicide:   val('f-herbicide'),
-    proposal:    val('f-proposal'),
     remarks:     val('f-remarks')
   };
 }
@@ -914,6 +880,7 @@ function generateReport() {
     h += '<b>作業前（Before）</b>' + photoHtml('prev-fi' + k + 'b');
     h += '<b>作業後（After）</b>'  + photoHtml('prev-fi' + k + 'a');
     h += '<b>除草剤散布後</b>'     + photoHtml('prev-fi' + k + 'h');
+    h += '<b>異常箇所写真</b>'     + photoHtml('prev-fi' + k + 'n');
     h += '<b>所見</b>';
     h += '<div class="r-notes">' + (val('notes-' + k) || '（所見なし）') + '</div>';
   }
@@ -921,24 +888,13 @@ function generateReport() {
     h += '<p class="no-photo">（エリアなし）</p>';
   }
 
-  h += '<div class="r-h2">4. 全体所見</div>';
-  h += '<div class="r-notes">' + (val('f-overview') || '（記載なし）') + '</div>';
-
-  h += '<div class="r-h2">5. 除草剤使用記録</div>';
-  h += '<b>散布状況写真</b>' + photoHtml('prev-figh');
-  h += '<div class="r-notes">' + (val('f-herbicide') || '（記載なし）') + '</div>';
-
-  h += '<div class="r-h2">6. 次回作業の提案</div>';
-  h += '<b>提案箇所写真</b>' + photoHtml('prev-figp');
-  h += '<div class="r-notes">' + (val('f-proposal') || '（記載なし）') + '</div>';
-
-  h += '<div class="r-h2">7. 備考・連絡事項</div>';
+  h += '<div class="r-h2">4. 備考・連絡事項</div>';
   h += '<div class="r-notes">' + (val('f-remarks') || '特になし') + '</div>';
 
   var iu = val('f-icloud');
   if (iu) {
     h += '<div style="margin:16px 0;padding:12px;border:1px solid #2e7d45;border-radius:6px;">';
-    h += '<b>詳細写真（iCloud）：</b><br>';
+    h += '<b>共有リンク：</b><br>';
     h += '<a href="' + iu + '" style="color:#1a5c2a;word-break:break-all;">' + iu + '</a>';
     h += '</div>';
   }

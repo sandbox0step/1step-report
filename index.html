@@ -188,6 +188,22 @@
       margin: 0 0 6px; width: 100%; box-sizing: border-box;
     }
     #pdf-preview-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    #sheets-btn {
+      display: none;
+      font-size: 15px; font-weight: bold; padding: 10px 20px;
+      background: #1e8e3e; color: #fff;
+      border: none; border-radius: 6px;
+      cursor: pointer; -webkit-appearance: none;
+      margin: 0 0 6px; width: 100%; box-sizing: border-box;
+    }
+    #sheets-btn:disabled { background: #90a4ae; cursor: not-allowed; }
+    #sheets-msg {
+      display: none;
+      font-size: 14px; font-weight: bold; text-align: center;
+      padding: 8px 12px; border-radius: 6px; margin-bottom: 8px;
+    }
+    #sheets-msg.ok  { background: #e8f5ec; color: #1a5c2a; border: 1px solid #a5d6a7; }
+    #sheets-msg.err { background: #fdecea; color: #c0392b; border: 1px solid #ef9a9a; }
 
     /* ===== 改ページコントロール ===== */
     .page-break-ctrl {
@@ -399,6 +415,8 @@
 <input type="button" id="back-btn" value="← 入力画面に戻る" onclick="backToForm()">
 <input type="button" id="pdf-preview-btn" value="🔍 プレビュー" onclick="previewPdf()">
 <input type="button" id="pdf-btn" value="📄 PDFで保存" onclick="generatePdf()">
+<input type="button" id="sheets-btn" value="📊 スプレッドシートに送信" onclick="sendToSheet()">
+<div id="sheets-msg"></div>
 <div id="view-report"></div>
 
 
@@ -423,7 +441,12 @@ var USERS = [
    GASをデプロイ後、取得したウェブアプリURLをここに設定
    設定手順は gas/code.gs のコメントを参照
    ===================================================== */
-var SHEET_URL = ''; /* ← GASデプロイURLをここに貼り付け */
+var SHEET_URL = ''; /* ← 自動送信用GASデプロイURL（未使用時は空のまま） */
+
+/* =====================================================
+   スプレッドシート送信ボタン用 GAS URL
+   ===================================================== */
+var GAS_URL = 'https://script.google.com/macros/s/AKfycbxtnLLUlzeMgubyjW4fY9g2Cf2O2yS_P_p1mSOyaXlYUyrul1xm_tDCXVrl-PB3fqYw/exec';
 
 function buildWorkTime() {
   var s = val('f-time-start');
@@ -1159,7 +1182,55 @@ function generateReport() {
   document.getElementById('back-btn').style.display        = 'block';
   document.getElementById('pdf-preview-btn').style.display = 'block';
   document.getElementById('pdf-btn').style.display         = 'block';
+  document.getElementById('sheets-btn').style.display      = 'block';
   window.scrollTo(0, 0);
+}
+
+/* ===== スプレッドシート送信 ===== */
+async function sendToSheet() {
+  var btn = document.getElementById('sheets-btn');
+  var msg = document.getElementById('sheets-msg');
+  btn.disabled = true;
+  btn.value    = '送信中...';
+  msg.style.display = 'none';
+  msg.className     = '';
+
+  var payload = {
+    workDate:    val('f-date'),
+    projectName: val('f-project'),
+    workerName:  val('f-staff'),
+    siteName:    val('f-name'),
+    siteId:      val('f-jobno'),
+    location:    val('f-location'),
+    workTime:    buildWorkTime(),
+    workerCount: val('f-workers'),
+    weather:     val('f-weather'),
+    remarks:     val('f-remarks'),
+    shareLink:   val('f-icloud')
+  };
+
+  try {
+    var res  = await fetch(GAS_URL, {
+      method:  'POST',
+      headers: { 'Content-Type': 'text/plain' },
+      body:    JSON.stringify(payload)
+    });
+    var json = await res.json();
+    if (json.status === 'ok') {
+      msg.textContent = '✅ 送信しました！';
+      msg.className   = 'ok';
+    } else {
+      msg.textContent = '❌ 送信に失敗しました';
+      msg.className   = 'err';
+    }
+  } catch (e) {
+    msg.textContent = '❌ 送信に失敗しました';
+    msg.className   = 'err';
+  } finally {
+    btn.disabled = false;
+    btn.value    = '📊 スプレッドシートに送信';
+    msg.style.display = 'block';
+  }
 }
 
 /* 入力画面に戻る */
@@ -1169,6 +1240,8 @@ function backToForm() {
   document.getElementById('back-btn').style.display        = 'none';
   document.getElementById('pdf-preview-btn').style.display = 'none';
   document.getElementById('pdf-btn').style.display         = 'none';
+  document.getElementById('sheets-btn').style.display      = 'none';
+  document.getElementById('sheets-msg').style.display      = 'none';
   document.getElementById('view-form').style.display       = 'block';
   _pdfCanvas = null;
   window.scrollTo(0, 0);

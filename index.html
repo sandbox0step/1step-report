@@ -133,6 +133,10 @@
       font-size: 11px; color: #555; margin-top: 3px;
       text-align: center; word-break: break-all;
     }
+    .exif-note {
+      font-size: 10px; color: #bbb; margin: 3px 0 0;
+      line-height: 1.5; word-break: break-all;
+    }
     .exif-date-manual {
       font-size: 12px !important; padding: 4px 6px !important;
       margin-top: 3px !important; border-width: 1px !important;
@@ -327,6 +331,7 @@
       <div id="prev-before" class="prev" data-exif-target="exif-date-before"></div>
       <div id="exif-date-before" class="exif-date-display" style="display:none;"></div>
       <input type="text" id="exif-manual-before" class="exif-date-manual" placeholder="2025年4月24日 14:30">
+      <p class="exif-note">※ 撮影日時はカメラのEXIF情報から自動取得しています。改ざんのない撮影データです。</p>
       <input type="file" id="before-file" accept="image/*" style="display:none"
         onchange="handleFileSelect(this,'prev-before',1,null,'exif-date-before')">
       <button type="button" onclick="document.getElementById('before-file').click()"
@@ -339,6 +344,7 @@
       <div id="prev-after" class="prev" data-exif-target="exif-date-after"></div>
       <div id="exif-date-after" class="exif-date-display" style="display:none;"></div>
       <input type="text" id="exif-manual-after" class="exif-date-manual" placeholder="2025年4月24日 14:30">
+      <p class="exif-note">※ 撮影日時はカメラのEXIF情報から自動取得しています。改ざんのない撮影データです。</p>
       <input type="file" id="after-file" accept="image/*" style="display:none"
         onchange="handleFileSelect(this,'prev-after',1,null,'exif-date-after')">
       <button type="button" onclick="document.getElementById('after-file').click()"

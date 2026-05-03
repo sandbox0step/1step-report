@@ -418,6 +418,13 @@ var USERS = [
   */
 ];
 
+/* =====================================================
+   Google Sheets 連携URL
+   GASをデプロイ後、取得したウェブアプリURLをここに設定
+   設定手順は gas/code.gs のコメントを参照
+   ===================================================== */
+var SHEET_URL = ''; /* ← GASデプロイURLをここに貼り付け */
+
 function buildWorkTime() {
   var s = val('f-time-start');
   var e = val('f-time-end');
@@ -1011,23 +1018,30 @@ function buildReportData() {
     areas:       areas,
     otherPhotos: document.querySelectorAll('#prev-other .prev-item img').length,
     otherNotes:  val('f-other-notes'),
-    remarks:     val('f-remarks')
+    remarks:     val('f-remarks'),
+    icloudUrl:   val('f-icloud')
   };
 }
 
-/* ===== Google Sheets 送信（土台） =====
-   本番化する際は SHEET_URL にGASのデプロイURLを設定する。
-   GAS側: doPost(e) { var d = JSON.parse(e.postData.contents); ... }
-   ================================================= */
+/* ===== Google Sheets 送信 =====
+   SHEET_URL（スクリプト上部）にGASデプロイURLを設定すると有効になる
+   ============================== */
 function sendToSpreadsheet(data) {
-  var SHEET_URL = ''; /* ← GASデプロイURLをここに貼り付け */
-  console.log('[Sheets送信データ]', JSON.stringify(data, null, 2));
   if (!SHEET_URL) return;
   fetch(SHEET_URL, {
-    method: 'POST',
+    method:  'POST',
     headers: { 'Content-Type': 'text/plain' },
-    body: JSON.stringify(data)
-  }).catch(function(e) { console.warn('[Sheets送信失敗]', e); });
+    body:    JSON.stringify(data)
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(j) {
+    if (j.status === 'ok') {
+      console.log('[Sheets] 送信完了');
+    } else {
+      console.warn('[Sheets] サーバーエラー:', j.message);
+    }
+  })
+  .catch(function(err) { console.warn('[Sheets] 送信失敗:', err); });
 }
 
 /* 写真プレビューから最初の1枚のsrcを取得 */

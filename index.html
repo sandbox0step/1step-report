@@ -318,9 +318,11 @@
   <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:10px;">
     <div>
       <label style="margin:0 0 4px;font-size:14px;">① 看板写真</label>
-      <div id="prev-sign" class="prev"></div>
+      <div id="prev-sign" class="prev" data-exif-target="exif-date-sign"></div>
+      <div id="exif-date-sign" class="exif-date-display" style="display:none;"></div>
+      <input type="text" id="exif-manual-sign" class="exif-date-manual" placeholder="2025年4月24日 14:30">
       <input type="file" id="sign-file" accept="image/*" style="display:none"
-        onchange="handleFileSelect(this,'prev-sign',1)">
+        onchange="handleFileSelect(this,'prev-sign',1,null,'exif-date-sign')">
       <button type="button" onclick="document.getElementById('sign-file').click()"
         style="display:block;width:100%;padding:8px 4px;font-size:12px;background:#e8f5ec;color:#1a5c2a;border:2px dashed #2e7d45;border-radius:6px;cursor:pointer;-webkit-appearance:none;box-sizing:border-box;">
         📷 選択
@@ -331,7 +333,6 @@
       <div id="prev-before" class="prev" data-exif-target="exif-date-before"></div>
       <div id="exif-date-before" class="exif-date-display" style="display:none;"></div>
       <input type="text" id="exif-manual-before" class="exif-date-manual" placeholder="2025年4月24日 14:30">
-      <p class="exif-note">※ 撮影日時はカメラのEXIF情報から自動取得しています。改ざんのない撮影データです。</p>
       <input type="file" id="before-file" accept="image/*" style="display:none"
         onchange="handleFileSelect(this,'prev-before',1,null,'exif-date-before')">
       <button type="button" onclick="document.getElementById('before-file').click()"
@@ -344,7 +345,6 @@
       <div id="prev-after" class="prev" data-exif-target="exif-date-after"></div>
       <div id="exif-date-after" class="exif-date-display" style="display:none;"></div>
       <input type="text" id="exif-manual-after" class="exif-date-manual" placeholder="2025年4月24日 14:30">
-      <p class="exif-note">※ 撮影日時はカメラのEXIF情報から自動取得しています。改ざんのない撮影データです。</p>
       <input type="file" id="after-file" accept="image/*" style="display:none"
         onchange="handleFileSelect(this,'prev-after',1,null,'exif-date-after')">
       <button type="button" onclick="document.getElementById('after-file').click()"
@@ -577,6 +577,7 @@ function resetSiteFields() {
     var pv = document.getElementById('prev-' + id);
     if (pv) pv.innerHTML = '';
   });
+  hideExifDate('exif-date-sign');
   hideExifDate('exif-date-before');
   hideExifDate('exif-date-after');
   localStorage.removeItem('site_name');
@@ -1092,10 +1093,11 @@ function generateReport() {
 
   h += '<div class="r-h2">2. 現場写真</div>';
   h += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin:12px 0;">';
-  h += photoGridCell('① 看板写真',      firstPhotoSrc('prev-sign'));
+  h += photoGridCell('① 看板写真',      firstPhotoSrc('prev-sign'),   getExifDisplayDate('exif-date-sign',   'exif-manual-sign'));
   h += photoGridCell('② 全景（作業前）', firstPhotoSrc('prev-before'), getExifDisplayDate('exif-date-before', 'exif-manual-before'));
   h += photoGridCell('③ 全景（作業後）', firstPhotoSrc('prev-after'),  getExifDisplayDate('exif-date-after',  'exif-manual-after'));
   h += '</div>';
+  h += '<p style="font-size:10px;color:#bbb;margin:-4px 0 8px;text-align:right;">※ 撮影日時はカメラのEXIF情報より自動取得（改ざんなし）</p>';
   h += pbCtrl('spec');
 
   h += '<div class="r-h2">3. エリア別 作業記録</div>';

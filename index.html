@@ -128,6 +128,17 @@
       cursor: pointer; -webkit-appearance: none; padding: 0;
     }
 
+    /* ===== EXIF撮影日時 ===== */
+    .exif-date-display {
+      font-size: 11px; color: #555; margin-top: 3px;
+      text-align: center; word-break: break-all;
+    }
+    .exif-date-manual {
+      font-size: 12px !important; padding: 4px 6px !important;
+      margin-top: 3px !important; border-width: 1px !important;
+      display: none;
+    }
+
     /* ===== 生成ボタン ===== */
     .gen-btn {
       display: block; width: 100%;
@@ -313,9 +324,11 @@
     </div>
     <div>
       <label style="margin:0 0 4px;font-size:14px;">② 全景（作業前）</label>
-      <div id="prev-before" class="prev"></div>
+      <div id="prev-before" class="prev" data-exif-target="exif-date-before"></div>
+      <div id="exif-date-before" class="exif-date-display" style="display:none;"></div>
+      <input type="text" id="exif-manual-before" class="exif-date-manual" placeholder="2025年4月24日 14:30">
       <input type="file" id="before-file" accept="image/*" style="display:none"
-        onchange="handleFileSelect(this,'prev-before',1)">
+        onchange="handleFileSelect(this,'prev-before',1,null,'exif-date-before')">
       <button type="button" onclick="document.getElementById('before-file').click()"
         style="display:block;width:100%;padding:8px 4px;font-size:12px;background:#e8f5ec;color:#1a5c2a;border:2px dashed #2e7d45;border-radius:6px;cursor:pointer;-webkit-appearance:none;box-sizing:border-box;">
         📷 選択
@@ -323,9 +336,11 @@
     </div>
     <div>
       <label style="margin:0 0 4px;font-size:14px;">③ 全景（作業後）</label>
-      <div id="prev-after" class="prev"></div>
+      <div id="prev-after" class="prev" data-exif-target="exif-date-after"></div>
+      <div id="exif-date-after" class="exif-date-display" style="display:none;"></div>
+      <input type="text" id="exif-manual-after" class="exif-date-manual" placeholder="2025年4月24日 14:30">
       <input type="file" id="after-file" accept="image/*" style="display:none"
-        onchange="handleFileSelect(this,'prev-after',1)">
+        onchange="handleFileSelect(this,'prev-after',1,null,'exif-date-after')">
       <button type="button" onclick="document.getElementById('after-file').click()"
         style="display:block;width:100%;padding:8px 4px;font-size:12px;background:#e8f5ec;color:#1a5c2a;border:2px dashed #2e7d45;border-radius:6px;cursor:pointer;-webkit-appearance:none;box-sizing:border-box;">
         📷 選択
@@ -442,7 +457,13 @@ function addFilePreview(file, box) {
   var btn = document.createElement('button');
   btn.className = 'prev-del';
   btn.textContent = '×';
-  btn.onclick = function() { wrap.remove(); };
+  btn.onclick = function() {
+    wrap.remove();
+    var exifTarget = box.dataset && box.dataset.exifTarget;
+    if (exifTarget && box.querySelectorAll('.prev-item').length === 0) {
+      hideExifDate(exifTarget);
+    }
+  };
   wrap.appendChild(img);
   wrap.appendChild(btn);
   box.appendChild(wrap);
@@ -460,7 +481,13 @@ function addUrlPreview(url, box) {
   var btn = document.createElement('button');
   btn.className = 'prev-del';
   btn.textContent = '×';
-  btn.onclick = function() { wrap.remove(); };
+  btn.onclick = function() {
+    wrap.remove();
+    var exifTarget = box.dataset && box.dataset.exifTarget;
+    if (exifTarget && box.querySelectorAll('.prev-item').length === 0) {
+      hideExifDate(exifTarget);
+    }
+  };
   wrap.appendChild(img);
   wrap.appendChild(btn);
   box.appendChild(wrap);
@@ -496,8 +523,9 @@ function addUrlFromInput(inputId, prevId, maxCount, autoExtractId) {
 }
 
 /* ファイル選択 → プレビュー追加（上限maxCount枚）
-   autoExtractId: 初回追加時に全景写真欄が空なら1枚目を自動コピー */
-function handleFileSelect(input, prevId, maxCount, autoExtractId) {
+   autoExtractId: 初回追加時に全景写真欄が空なら1枚目を自動コピー
+   exifDivId: EXIF撮影日時を表示するdivのID */
+function handleFileSelect(input, prevId, maxCount, autoExtractId, exifDivId) {
   var box = document.getElementById(prevId);
   if (!box) return;
   var current = box.querySelectorAll('.prev-item').length;
@@ -515,7 +543,18 @@ function handleFileSelect(input, prevId, maxCount, autoExtractId) {
     var extractBox = document.getElementById(autoExtractId);
     if (extractBox && extractBox.querySelectorAll('.prev-item').length === 0) {
       addFilePreview(toAdd[0], extractBox);
+      /* 全景写真欄への自動コピー時にもEXIF日時を読み取る */
+      (function(f, aid) {
+        var eid = 'exif-date-' + aid.replace('prev-', '');
+        if (document.getElementById(eid)) {
+          readExifDate(f, function(d) { showExifDate(eid, d); });
+        }
+      })(toAdd[0], autoExtractId);
     }
+  }
+  /* 直接アップロード時のEXIF日時読み取り */
+  if (exifDivId && wasEmpty && toAdd.length > 0) {
+    readExifDate(toAdd[0], function(d) { showExifDate(exifDivId, d); });
   }
   input.value = '';
 }
@@ -532,6 +571,8 @@ function resetSiteFields() {
     var pv = document.getElementById('prev-' + id);
     if (pv) pv.innerHTML = '';
   });
+  hideExifDate('exif-date-before');
+  hideExifDate('exif-date-after');
   localStorage.removeItem('site_name');
   localStorage.removeItem('site_jobno');
   localStorage.removeItem('site_location');
@@ -742,6 +783,116 @@ function parsePastedText() {
   }, 4000);
 }
 
+/* ===== EXIF撮影日時読み取り ===== */
+
+/* JPEGバイナリからDateTimeOriginal(0x9003)またはDateTime(0x0132)を取得 */
+function readExifDate(file, callback) {
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      var buf  = e.target.result;
+      var view = new DataView(buf);
+      if (view.getUint16(0) !== 0xFFD8) { callback(null); return; }
+      var offset = 2;
+      while (offset < buf.byteLength - 4) {
+        var marker = view.getUint16(offset);
+        offset += 2;
+        if (marker === 0xFFE1) {
+          var segLen = view.getUint16(offset);
+          /* "Exif\0\0" チェック */
+          if (view.getUint32(offset + 2) === 0x45786966 && view.getUint16(offset + 6) === 0x0000) {
+            var ts  = offset + 8; /* TIFFヘッダ先頭 */
+            var le  = (view.getUint16(ts) === 0x4949);
+            var ifd = ts + view.getUint32(ts + 4, le);
+            var n   = view.getUint16(ifd, le);
+            var dateStr = null, exifPtr = null;
+            for (var i = 0; i < n; i++) {
+              var ep  = ifd + 2 + i * 12;
+              var tag = view.getUint16(ep, le);
+              if (tag === 0x8769) exifPtr = ts + view.getUint32(ep + 8, le);
+              if (tag === 0x0132) {
+                var vo = ts + view.getUint32(ep + 8, le);
+                var s  = '';
+                for (var j = 0; j < 19; j++) { var c = view.getUint8(vo + j); if (!c) break; s += String.fromCharCode(c); }
+                dateStr = s;
+              }
+            }
+            if (exifPtr) {
+              var ne = view.getUint16(exifPtr, le);
+              for (var i = 0; i < ne; i++) {
+                var ep  = exifPtr + 2 + i * 12;
+                var tag = view.getUint16(ep, le);
+                if (tag === 0x9003) {
+                  var vo = ts + view.getUint32(ep + 8, le);
+                  var s  = '';
+                  for (var j = 0; j < 19; j++) { var c = view.getUint8(vo + j); if (!c) break; s += String.fromCharCode(c); }
+                  dateStr = s;
+                  break;
+                }
+              }
+            }
+            if (dateStr) {
+              var m = dateStr.match(/^(\d{4}):(\d{2}):(\d{2}) (\d{2}):(\d{2})/);
+              if (m) {
+                callback(m[1] + '年' + parseInt(m[2]) + '月' + parseInt(m[3]) + '日 ' + m[4] + ':' + m[5]);
+                return;
+              }
+            }
+          }
+          offset += segLen;
+        } else if (marker === 0xFFDA) {
+          break;
+        } else {
+          if (offset + 2 > buf.byteLength) break;
+          offset += view.getUint16(offset);
+        }
+      }
+      callback(null);
+    } catch (ex) { callback(null); }
+  };
+  reader.onerror = function() { callback(null); };
+  reader.readAsArrayBuffer(file.slice(0, 65536));
+}
+
+/* EXIF日時を表示divに反映。dateStrがnullなら手動入力欄を表示 */
+function showExifDate(divId, dateStr) {
+  var display = document.getElementById(divId);
+  var manualId = divId.replace('exif-date-', 'exif-manual-');
+  var manual = document.getElementById(manualId);
+  if (!display) return;
+  if (dateStr) {
+    display.textContent  = '撮影日時：' + dateStr;
+    display.style.display = '';
+    if (manual) manual.style.display = 'none';
+  } else {
+    display.textContent  = '';
+    display.style.display = 'none';
+    if (manual) manual.style.display = 'block';
+  }
+}
+
+/* 写真削除時にEXIF表示・手動入力欄を両方隠す */
+function hideExifDate(divId) {
+  var display = document.getElementById(divId);
+  var manualId = divId.replace('exif-date-', 'exif-manual-');
+  var manual = document.getElementById(manualId);
+  if (display) { display.textContent = ''; display.style.display = 'none'; }
+  if (manual)  { manual.value = ''; manual.style.display = 'none'; }
+}
+
+/* 報告書生成時に表示中の撮影日時テキストを取得 */
+function getExifDisplayDate(divId, manualId) {
+  var display = document.getElementById(divId);
+  if (display && display.style.display !== 'none' && display.textContent) {
+    return display.textContent.replace('撮影日時：', '');
+  }
+  var manual = document.getElementById(manualId);
+  if (manual && manual.style.display !== 'none' && manual.value.trim()) {
+    return manual.value.trim();
+  }
+  return null;
+}
+
 /* ===== localStorage 自動保存・読み込み ===== */
 var SAVE_MAP = { 'f-name': 'site_name', 'f-jobno': 'site_jobno', 'f-location': 'site_location' };
 
@@ -880,13 +1031,17 @@ function firstPhotoSrc(prevId) {
   return img ? img.src : null;
 }
 
-/* 報告書用：ラベル付き写真セル（なしの場合はグレー枠） */
-function photoGridCell(label, src) {
+/* 報告書用：ラベル付き写真セル（なしの場合はグレー枠）
+   dateStr: 撮影日時文字列（省略可） */
+function photoGridCell(label, src, dateStr) {
   var s = '<div style="text-align:center;">';
   s += '<div style="font-weight:bold;font-size:13px;color:#1a5c2a;margin-bottom:6px;">' + label + '</div>';
   if (src) {
     s += '<img src="' + src + '" style="width:100%;max-height:180px;object-fit:cover;border:1px solid #aaa;border-radius:4px;cursor:pointer;display:block;" onclick="window.open(this.src,\'_blank\')">';
     s += '<div style="font-size:11px;color:#888;margin-top:2px;">クリックで拡大</div>';
+    if (dateStr) {
+      s += '<div style="font-size:11px;color:#555;margin-top:3px;">撮影：' + dateStr + '</div>';
+    }
   } else {
     s += '<div style="height:80px;background:#f5f5f5;border:1px dashed #ccc;border-radius:4px;display:flex;align-items:center;justify-content:center;color:#bbb;font-size:13px;">（なし）</div>';
   }
@@ -932,8 +1087,8 @@ function generateReport() {
   h += '<div class="r-h2">2. 現場写真</div>';
   h += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin:12px 0;">';
   h += photoGridCell('① 看板写真',      firstPhotoSrc('prev-sign'));
-  h += photoGridCell('② 全景（作業前）', firstPhotoSrc('prev-before'));
-  h += photoGridCell('③ 全景（作業後）', firstPhotoSrc('prev-after'));
+  h += photoGridCell('② 全景（作業前）', firstPhotoSrc('prev-before'), getExifDisplayDate('exif-date-before', 'exif-manual-before'));
+  h += photoGridCell('③ 全景（作業後）', firstPhotoSrc('prev-after'),  getExifDisplayDate('exif-date-after',  'exif-manual-after'));
   h += '</div>';
   h += pbCtrl('spec');
 

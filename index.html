@@ -353,7 +353,7 @@
       </button>
     </div>
   </div>
-
+  <p style="font-size:10px;color:#bbb;margin:0 0 10px;text-align:right;line-height:1.6;">※ 撮影日時はカメラのEXIF情報より自動取得（改ざんなし）</p>
 
   <div style="background:#fffbf0;border:2px solid #f9a825;border-radius:8px;padding:12px 14px;margin:0 0 10px;font-size:15px;line-height:1.8;color:#555;">
     看板写真をタップして拡大し、文字を確認 → iPhoneの「写真」アプリで長押しコピー →<br>下の欄に貼り付けてボタンを押す
@@ -1097,7 +1097,7 @@ function generateReport() {
   h += photoGridCell('② 全景（作業前）', firstPhotoSrc('prev-before'), getExifDisplayDate('exif-date-before', 'exif-manual-before'));
   h += photoGridCell('③ 全景（作業後）', firstPhotoSrc('prev-after'),  getExifDisplayDate('exif-date-after',  'exif-manual-after'));
   h += '</div>';
-  h += '<p style="font-size:10px;color:#bbb;margin:-4px 0 8px;text-align:right;">※ 撮影日時はカメラのEXIF情報より自動取得（改ざんなし）</p>';
+  h += '<p style="font-size:10px;color:#bbb;margin:4px 0 8px;text-align:right;line-height:1.6;">※ 撮影日時はカメラのEXIF情報より自動取得（改ざんなし）</p>';
   h += pbCtrl('spec');
 
   h += '<div class="r-h2">3. エリア別 作業記録</div>';

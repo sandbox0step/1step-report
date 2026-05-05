@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>ASR カメラ</title>
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="ASRカメラ">
+  <style>
+    body {
+      font-family: sans-serif; font-size: 16px; margin: 0; background: #fff;
+      padding: 12px;
+      padding-top:    max(12px, env(safe-area-inset-top));
+      padding-bottom: max(12px, env(safe-area-inset-bottom));
+      padding-left:   max(12px, env(safe-area-inset-left));
+      padding-right:  max(12px, env(safe-area-inset-right));
+    }
+    h1 { font-size: 20px; margin: 8px 0 16px; }
+    h2 { font-size: 17px; background: #2e7d45; color: #fff; padding: 8px 12px; margin: 20px -12px 12px; }
+
+    .mode-btns { display: flex; gap: 8px; margin-bottom: 16px; }
+    .mode-btn {
+      flex: 1; font-size: 16px; font-weight: bold;
+      padding: 14px 8px;
+      background: #f5f5f5; color: #555;
+      border: 2px solid #ddd; border-radius: 8px;
+      cursor: pointer; -webkit-appearance: none;
+    }
+    .mode-btn.active { background: #1a5c2a; color: #fff; border-color: #1a5c2a; }
+
+    .count-row { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+    .count-badge {
+      font-size: 13px; font-weight: bold;
+      padding: 4px 12px; border-radius: 12px;
+    }
+
+    .cam-btn {
+      display: block; width: 100%;
+      font-size: 20px; font-weight: bold;
+      padding: 22px; margin: 0 0 8px;
+      background: #2e7d45; color: #fff;
+      border: none; border-radius: 8px;
+      cursor: pointer; -webkit-appearance: none; box-sizing: border-box;
+    }
+    .cam-btn:active { background: #1a5c2a; }
+
+    .photo-grid { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
+    .photo-item { position: relative; width: 120px; }
+    .photo-item img {
+      width: 120px; height: 120px; object-fit: cover;
+      border: 1px solid #aaa; border-radius: 4px; display: block; cursor: pointer;
+    }
+    .photo-meta {
+      position: absolute; bottom: 0; left: 0; right: 0;
+      background: rgba(0,0,0,0.6); color: #fff;
+      font-size: 10px; padding: 3px 5px;
+      border-radius: 0 0 4px 4px; line-height: 1.5;
+    }
+    .photo-mode-badge {
+      display: inline-block; font-size: 10px; font-weight: bold;
+      padding: 1px 5px; border-radius: 3px; margin-bottom: 1px;
+    }
+    .photo-del {
+      position: absolute; top: 0; right: 0;
+      width: 32px; height: 32px;
+      background: rgba(200,0,0,0.85); color: #fff;
+      border: none; border-radius: 0 4px 0 6px;
+      font-size: 16px; font-weight: bold; line-height: 32px; text-align: center;
+      cursor: pointer; -webkit-appearance: none; padding: 0;
+    }
+    .no-photo { color: #999; font-size: 14px; margin: 4px 0 12px; }
+
+    .send-btn {
+      display: block; width: 100%;
+      font-size: 17px; font-weight: bold;
+      padding: 16px; margin: 8px 0;
+      background: #1e8e3e; color: #fff;
+      border: none; border-radius: 8px;
+      cursor: pointer; -webkit-appearance: none; box-sizing: border-box;
+    }
+    .send-btn:disabled { background: #90a4ae; cursor: not-allowed; }
+    #send-msg {
+      display: none; font-size: 14px; font-weight: bold; text-align: center;
+      padding: 8px 12px; border-radius: 6px; margin-bottom: 8px;
+    }
+    #send-msg.ok  { background: #e8f5ec; color: #1a5c2a; border: 1px solid #a5d6a7; }
+    #send-msg.err { background: #fdecea; color: #c0392b; border: 1px solid #ef9a9a; }
+  </style>
+</head>
+<body>
+
+<h1>ASR カメラ</h1>
+
+<h2>モード選択</h2>
+<div class="mode-btns">
+  <button class="mode-btn active" id="btn-before" type="button" onclick="setMode('作業前')">作業前</button>
+  <button class="mode-btn"        id="btn-after"  type="button" onclick="setMode('作業後')">作業後</button>
+  <button class="mode-btn"        id="btn-check"  type="button" onclick="setMode('点検')">点検</button>
+</div>
+
+<div class="count-row">
+  <span class="count-badge" id="cnt-before" style="background:#dce8ff;color:#1565c0;">作業前: 0枚</span>
+  <span class="count-badge" id="cnt-after"  style="background:#fff3e0;color:#e65100;">作業後: 0枚</span>
+  <span class="count-badge" id="cnt-check"  style="background:#f3e5f5;color:#6a1b9a;">点検: 0枚</span>
+</div>
+
+<input type="file" id="cam-input" accept="image/*" capture="environment"
+       style="display:none" onchange="onCapture(this)">
+<button class="cam-btn" type="button"
+        onclick="document.getElementById('cam-input').click()">
+  📷 撮影（<span id="current-mode-label">作業前</span>）
+</button>
+
+<h2>撮影済み写真</h2>
+<div id="photo-grid" class="photo-grid">
+  <p class="no-photo" id="no-photo-msg">まだ写真がありません</p>
+</div>
+
+<h2>スプレッドシート送信</h2>
+<button class="send-btn" id="send-btn" type="button" onclick="sendToSheet()">
+  📊 スプレッドシートに送信
+</button>
+<div id="send-msg"></div>
+
+<script>
+var GAS_URL = 'https://script.google.com/macros/s/AKfycbxtnLLUlzeMgubyjW4fY9g2Cf2O2yS_P_p1mSOyaXlYUyrul1xm_tDCXVrl-PB3fqYw/exec';
+
+var currentMode = '作業前';
+var photos = [];
+var photoId = 0;
+
+var MODE_CFG = {
+  '作業前': { btnId: 'btn-before', cntId: 'cnt-before', bg: '#1565c0' },
+  '作業後': { btnId: 'btn-after',  cntId: 'cnt-after',  bg: '#e65100' },
+  '点検':   { btnId: 'btn-check',  cntId: 'cnt-check',  bg: '#6a1b9a' }
+};
+
+function setMode(mode) {
+  currentMode = mode;
+  document.getElementById('current-mode-label').textContent = mode;
+  Object.keys(MODE_CFG).forEach(function(m) {
+    var btn = document.getElementById(MODE_CFG[m].btnId);
+    btn.classList.toggle('active', m === mode);
+  });
+}
+
+function formatDatetime(d) {
+  return d.getFullYear() + '年' + (d.getMonth() + 1) + '月' + d.getDate() + '日 ' +
+    ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2);
+}
+
+function onCapture(input) {
+  if (!input.files || !input.files[0]) return;
+  var file = input.files[0];
+  var mode = currentMode;
+  var now  = new Date();
+  readExifDate(file, function(exifDate) {
+    var datetime = exifDate || formatDatetime(now);
+    var id  = ++photoId;
+    var src = URL.createObjectURL(file);
+    photos.push({ id: id, mode: mode, datetime: datetime, src: src });
+    renderPhoto({ id: id, mode: mode, datetime: datetime, src: src });
+    updateCounts();
+  });
+  input.value = '';
+}
+
+function renderPhoto(p) {
+  var noMsg = document.getElementById('no-photo-msg');
+  if (noMsg) noMsg.style.display = 'none';
+
+  var item = document.createElement('div');
+  item.className = 'photo-item';
+  item.id = 'photo-' + p.id;
+
+  var img = document.createElement('img');
+  img.src = p.src;
+  img.onclick = (function(s) { return function() { window.open(s, '_blank'); }; })(p.src);
+
+  var cfg = MODE_CFG[p.mode] || { bg: '#333' };
+  var meta = document.createElement('div');
+  meta.className = 'photo-meta';
+  meta.innerHTML =
+    '<span class="photo-mode-badge" style="background:' + cfg.bg + ';">' + p.mode + '</span><br>' +
+    p.datetime;
+
+  var del = document.createElement('button');
+  del.className = 'photo-del';
+  del.type = 'button';
+  del.textContent = '×';
+  del.onclick = (function(id) { return function() { removePhoto(id); }; })(p.id);
+
+  item.appendChild(img);
+  item.appendChild(meta);
+  item.appendChild(del);
+  document.getElementById('photo-grid').appendChild(item);
+}
+
+function removePhoto(id) {
+  photos = photos.filter(function(p) { return p.id !== id; });
+  var el = document.getElementById('photo-' + id);
+  if (el) el.remove();
+  updateCounts();
+  if (photos.length === 0) {
+    var noMsg = document.getElementById('no-photo-msg');
+    if (noMsg) noMsg.style.display = '';
+  }
+}
+
+function updateCounts() {
+  var counts = { '作業前': 0, '作業後': 0, '点検': 0 };
+  photos.forEach(function(p) { if (p.mode in counts) counts[p.mode]++; });
+  document.getElementById('cnt-before').textContent = '作業前: ' + counts['作業前'] + '枚';
+  document.getElementById('cnt-after').textContent  = '作業後: ' + counts['作業後'] + '枚';
+  document.getElementById('cnt-check').textContent  = '点検: '   + counts['点検']   + '枚';
+}
+
+/* JPEGのEXIF DateTimeOriginalを読み取る（index.htmlと同一実装） */
+function readExifDate(file, callback) {
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      var buf  = e.target.result;
+      var view = new DataView(buf);
+      if (view.getUint16(0) !== 0xFFD8) { callback(null); return; }
+      var offset = 2;
+      while (offset < buf.byteLength - 4) {
+        var marker = view.getUint16(offset);
+        offset += 2;
+        if (marker === 0xFFE1) {
+          var segLen = view.getUint16(offset);
+          if (view.getUint32(offset + 2) === 0x45786966 && view.getUint16(offset + 6) === 0x0000) {
+            var ts = offset + 8;
+            var le = (view.getUint16(ts) === 0x4949);
+            var ifd = ts + view.getUint32(ts + 4, le);
+            var n = view.getUint16(ifd, le);
+            var dateStr = null, exifPtr = null;
+            for (var i = 0; i < n; i++) {
+              var ep  = ifd + 2 + i * 12;
+              var tag = view.getUint16(ep, le);
+              if (tag === 0x8769) exifPtr = ts + view.getUint32(ep + 8, le);
+              if (tag === 0x0132) {
+                var vo = ts + view.getUint32(ep + 8, le);
+                var s  = '';
+                for (var j = 0; j < 19; j++) { var c = view.getUint8(vo + j); if (!c) break; s += String.fromCharCode(c); }
+                dateStr = s;
+              }
+            }
+            if (exifPtr) {
+              var ne = view.getUint16(exifPtr, le);
+              for (var i = 0; i < ne; i++) {
+                var ep  = exifPtr + 2 + i * 12;
+                var tag = view.getUint16(ep, le);
+                if (tag === 0x9003) {
+                  var vo = ts + view.getUint32(ep + 8, le);
+                  var s  = '';
+                  for (var j = 0; j < 19; j++) { var c = view.getUint8(vo + j); if (!c) break; s += String.fromCharCode(c); }
+                  dateStr = s;
+                  break;
+                }
+              }
+            }
+            if (dateStr) {
+              var m = dateStr.match(/^(\d{4}):(\d{2}):(\d{2}) (\d{2}):(\d{2})/);
+              if (m) {
+                callback(m[1] + '年' + parseInt(m[2]) + '月' + parseInt(m[3]) + '日 ' + m[4] + ':' + m[5]);
+                return;
+              }
+            }
+          }
+          offset += segLen;
+        } else if (marker === 0xFFDA) {
+          break;
+        } else {
+          if (offset + 2 > buf.byteLength) break;
+          offset += view.getUint16(offset);
+        }
+      }
+      callback(null);
+    } catch (ex) { callback(null); }
+  };
+  reader.onerror = function() { callback(null); };
+  reader.readAsArrayBuffer(file.slice(0, 65536));
+}
+
+async function sendToSheet() {
+  var btn = document.getElementById('send-btn');
+  var msg = document.getElementById('send-msg');
+
+  if (photos.length === 0) {
+    msg.textContent   = '写真がありません';
+    msg.className     = 'err';
+    msg.style.display = 'block';
+    return;
+  }
+
+  btn.disabled    = true;
+  btn.textContent = '送信中...';
+  msg.style.display = 'none';
+  msg.className     = '';
+
+  var counts = { '作業前': 0, '作業後': 0, '点検': 0 };
+  photos.forEach(function(p) { if (p.mode in counts) counts[p.mode]++; });
+
+  var payload = {
+    type:        'camera_asr',
+    capturedAt:  new Date().toISOString(),
+    countBefore: counts['作業前'],
+    countAfter:  counts['作業後'],
+    countCheck:  counts['点検'],
+    totalCount:  photos.length,
+    photos:      photos.map(function(p) { return { mode: p.mode, datetime: p.datetime }; })
+  };
+
+  var controller = new AbortController();
+  var timer = setTimeout(function() { controller.abort(); }, 15000);
+
+  try {
+    await fetch(GAS_URL, {
+      method:  'POST',
+      mode:    'no-cors',
+      headers: { 'Content-Type': 'text/plain' },
+      body:    JSON.stringify(payload),
+      signal:  controller.signal
+    });
+    clearTimeout(timer);
+    msg.textContent = '✅ 送信しました！';
+    msg.className   = 'ok';
+  } catch (e) {
+    clearTimeout(timer);
+    msg.textContent = '❌ 送信に失敗しました';
+    msg.className   = 'err';
+  } finally {
+    btn.disabled    = false;
+    btn.textContent = '📊 スプレッドシートに送信';
+    msg.style.display = 'block';
+  }
+}
+</script>
+</body>
+</html>

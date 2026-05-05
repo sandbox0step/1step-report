@@ -1,33 +1,31 @@
-/**
- * =================================================================
- *  統合 GAS スクリプト
- *  ① 除草作業 完了報告書 → スプレッドシート（index.html）
- *  ② ASRカメラ サマリー  → スプレッドシート（camera.html）
- *  ③ ASRカメラ 写真      → Google ドライブ保存（camera.html）
- * =================================================================
- *
- * 【デプロイ手順】
- *  ① Googleスプレッドシートを開く
- *     https://docs.google.com/spreadsheets/d/1vN9wtH2nEiSpC4QxpYphaJ-369eGmNHV4k5DB5ETvms/edit
- *  ② メニュー「拡張機能」→「Apps Script」→ このコードを貼り付けて保存
- *  ③「デプロイ」→「新しいデプロイ」
- *     ・種類：ウェブアプリ
- *     ・次のユーザーとして実行：自分（メールアドレス）
- *     ・アクセスできるユーザー：全員
- *  ④「アクセスを承認」→ Googleアカウントでログイン
- *     （「詳細」→「安全でないページへ移動」→「許可」）
- *  ⑤ 表示された URL を index.html / camera.html の GAS_URL に設定
- *
- * 【コード修正後の再デプロイ】
- *  「デプロイ」→「デプロイを管理」→ 鉛筆アイコン →
- *  バージョン：「新しいバージョン」→「デプロイ」
- * =================================================================
- */
+// =================================================================
+//  統合 GAS スクリプト
+//  1. 除草作業 完了報告書 -> スプレッドシート（index.html）
+//  2. ASRカメラ サマリー  -> スプレッドシート（camera.html）
+//  3. ASRカメラ 写真      -> Google ドライブ保存（camera.html）
+// =================================================================
+//
+// 【デプロイ手順】
+//  (1) Googleスプレッドシートを開く
+//      https://docs.google.com/spreadsheets/d/1vN9wtH2nEiSpC4QxpYphaJ-369eGmNHV4k5DB5ETvms/edit
+//  (2) メニュー「拡張機能」->「Apps Script」-> このコードを貼り付けて保存
+//  (3)「デプロイ」->「新しいデプロイ」
+//      種類：ウェブアプリ
+//      次のユーザーとして実行：自分（メールアドレス）
+//      アクセスできるユーザー：全員
+//  (4)「アクセスを承認」-> Googleアカウントでログイン
+//      「詳細」->「安全でないページへ移動」->「許可」
+//  (5) 表示された URL を index.html / camera.html の GAS_URL に設定
+//
+// 【コード修正後の再デプロイ】
+//  「デプロイ」->「デプロイを管理」-> 鉛筆アイコン ->
+//  バージョン：「新しいバージョン」->「デプロイ」
+// =================================================================
 
 // ===== 設定 =====
 var SPREADSHEET_ID = '1vN9wtH2nEiSpC4QxpYphaJ-369eGmNHV4k5DB5ETvms';
-var REPORT_SHEET   = 'シート1';   /* index.html の報告書データ */
-var CAMERA_SHEET   = 'ASRカメラ'; /* camera.html のサマリーデータ */
+var REPORT_SHEET   = 'シート1';
+var CAMERA_SHEET   = 'ASRカメラ';
 
 // ===== ヘッダー定義 =====
 var REPORT_HEADERS = [
@@ -39,10 +37,9 @@ var CAMERA_HEADERS = [
   '送信日時', '現場名', '作業前', '作業後', '点検', '合計枚数', 'Driveフォルダ'
 ];
 
-/* ================================================================
-   エントリーポイント
-   data.type で処理を振り分ける
-   ================================================================ */
+// =================================================================
+// エントリーポイント: data.type で処理を振り分ける
+// =================================================================
 function doPost(e) {
   try {
     var data = JSON.parse(e.postData.contents);
@@ -54,34 +51,31 @@ function doPost(e) {
   }
 }
 
-/* ================================================================
-   ③ 写真を Google ドライブに保存
-   フォルダ構成: ASR / [現場名] / [日付] / [モード]
-   ================================================================ */
+// =================================================================
+// 写真を Google ドライブに保存
+// フォルダ構成: ASR / 現場名 / 日付 / モード
+// =================================================================
 function savePhotoToDrive(data) {
-  /* 同時リクエストによるフォルダ重複作成を防ぐ */
   var lock = LockService.getScriptLock();
-  lock.waitLock(30000);
-
   try {
-    var siteName = (data.siteName || '未設定').replace(/[\/\\:*?"<>|]/g, '_');
+    lock.waitLock(30000);
+
+    var siteName = (data.siteName || '未設定').replace(/[\\/:*?<>|"]/g, '_');
     var date     = data.date || todayJST();
     var mode     = data.mode || '点検';
 
-    /* フォルダ階層を取得または作成 */
     var root       = DriveApp.getRootFolder();
     var asrFolder  = getOrCreateFolder('ASR',    root);
     var siteFolder = getOrCreateFolder(siteName, asrFolder);
     var dateFolder = getOrCreateFolder(date,     siteFolder);
     var modeFolder = getOrCreateFolder(mode,     dateFolder);
 
-    /* 写真ファイルを保存 */
     var filename = data.filename || (nowFilename() + '.jpg');
     var bytes    = Utilities.base64Decode(data.imageData);
     var blob     = Utilities.newBlob(bytes, data.mimeType || 'image/jpeg', filename);
     modeFolder.createFile(blob);
 
-    /* 日付フォルダを「リンクを知っている全員が閲覧可」に設定 */
+    // 日付フォルダをリンクを知っている全員が閲覧可に設定
     dateFolder.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
     var link = 'https://drive.google.com/drive/folders/' + dateFolder.getId();
 
@@ -92,13 +86,15 @@ function savePhotoToDrive(data) {
   }
 }
 
-/* ================================================================
-   ② ASRカメラのサマリーをスプレッドシートに保存
-   ================================================================ */
+// =================================================================
+// ASRカメラのサマリーをスプレッドシートに保存
+// =================================================================
 function saveCameraToSheet(data) {
   var ss    = SpreadsheetApp.openById(SPREADSHEET_ID);
   var sheet = ss.getSheetByName(CAMERA_SHEET);
-  if (!sheet) sheet = ss.insertSheet(CAMERA_SHEET);
+  if (!sheet) {
+    sheet = ss.insertSheet(CAMERA_SHEET);
+  }
 
   if (sheet.getLastRow() === 0) {
     sheet.appendRow(CAMERA_HEADERS);
@@ -121,9 +117,9 @@ function saveCameraToSheet(data) {
   return makeJson({ status: 'ok' });
 }
 
-/* ================================================================
-   ① 報告書データをスプレッドシートに保存（index.html 用・既存処理）
-   ================================================================ */
+// =================================================================
+// 報告書データをスプレッドシートに保存（index.html 用）
+// =================================================================
 function saveReportToSheet(data) {
   var ss    = SpreadsheetApp.openById(SPREADSHEET_ID);
   var sheet = ss.getSheetByName(REPORT_SHEET) || ss.getActiveSheet();
@@ -152,14 +148,16 @@ function saveReportToSheet(data) {
     data.shareLink   || data.icloudUrl || ''
   ]);
 
-  if (!sheet.getFilter()) sheet.getDataRange().createFilter();
+  if (!sheet.getFilter()) {
+    sheet.getDataRange().createFilter();
+  }
 
   return makeJson({ status: 'ok' });
 }
 
-/* ================================================================
-   ヘルパー
-   ================================================================ */
+// =================================================================
+// ヘルパー関数
+// =================================================================
 function getOrCreateFolder(name, parentFolder) {
   var it = parentFolder.getFoldersByName(name);
   if (it.hasNext()) return it.next();

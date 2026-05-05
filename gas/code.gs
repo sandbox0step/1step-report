@@ -1,110 +1,181 @@
 /**
  * =================================================================
- *  除草作業 完了報告書  →  Googleスプレッドシート 連携スクリプト
+ *  統合 GAS スクリプト
+ *  ① 除草作業 完了報告書 → スプレッドシート（index.html）
+ *  ② ASRカメラ サマリー  → スプレッドシート（camera.html）
+ *  ③ ASRカメラ 写真      → Google ドライブ保存（camera.html）
  * =================================================================
  *
- * 【設定手順】
- *
+ * 【デプロイ手順】
  *  ① Googleスプレッドシートを開く
  *     https://docs.google.com/spreadsheets/d/1vN9wtH2nEiSpC4QxpYphaJ-369eGmNHV4k5DB5ETvms/edit
+ *  ② メニュー「拡張機能」→「Apps Script」→ このコードを貼り付けて保存
+ *  ③「デプロイ」→「新しいデプロイ」
+ *     ・種類：ウェブアプリ
+ *     ・次のユーザーとして実行：自分（メールアドレス）
+ *     ・アクセスできるユーザー：全員
+ *  ④「アクセスを承認」→ Googleアカウントでログイン
+ *     （「詳細」→「安全でないページへ移動」→「許可」）
+ *  ⑤ 表示された URL を index.html / camera.html の GAS_URL に設定
  *
- *  ② メニュー「拡張機能」→「Apps Script」をクリック
- *
- *  ③ エディタに表示されている既存コードをすべて削除し、
- *     このファイルの内容をすべて貼り付けて保存（Ctrl+S）
- *
- *  ④ 画面上部「デプロイ」ボタン →「新しいデプロイ」をクリック
- *
- *  ⑤ 設定画面で以下を選択してデプロイ
- *     ・種類の選択：「ウェブアプリ」
- *     ・次のユーザーとして実行：「自分（メールアドレス）」
- *     ・アクセスできるユーザー：「全員」
- *     ・「デプロイ」ボタンをクリック
- *
- *  ⑥ 「アクセスを承認」→ Googleアカウントでログイン
- *     「詳細」→「（安全でないページ）へ移動」→「許可」
- *
- *  ⑦ 表示された「ウェブアプリの URL」をコピーする
- *     例: https://script.google.com/macros/s/XXXXXXXX/exec
- *
- *  ⑧ index.html の SHEET_URL にそのURLを貼り付けて保存・再デプロイ
- *     var SHEET_URL = 'https://script.google.com/macros/s/XXXXXXXX/exec';
- *
- * 【コード修正後の再デプロイ手順】
- *  「デプロイ」→「デプロイを管理」→ 鉛筆アイコン（編集）→
- *  バージョン：「新しいバージョン」を選択 →「デプロイ」
- *
- * 【スプレッドシートのシート名について】
- *  デフォルトは「シート1」。変更した場合は下の SHEET_NAME を修正する。
+ * 【コード修正後の再デプロイ】
+ *  「デプロイ」→「デプロイを管理」→ 鉛筆アイコン →
+ *  バージョン：「新しいバージョン」→「デプロイ」
  * =================================================================
  */
 
 // ===== 設定 =====
 var SPREADSHEET_ID = '1vN9wtH2nEiSpC4QxpYphaJ-369eGmNHV4k5DB5ETvms';
-var SHEET_NAME     = 'シート1';
+var REPORT_SHEET   = 'シート1';   /* index.html の報告書データ */
+var CAMERA_SHEET   = 'ASRカメラ'; /* camera.html のサマリーデータ */
 
-var HEADERS = [
-  '送信日時',
-  '作業日',
-  '案件名',
-  '担当者名',
-  '現場名称',
-  '工番',
-  '所在地',
-  '作業時間',
-  '作業人数',
-  '天候・気温',
-  '備考・連絡事項',
-  '共有リンクURL'
+// ===== ヘッダー定義 =====
+var REPORT_HEADERS = [
+  '送信日時', '作業日', '案件名', '担当者名', '現場名称',
+  '工番', '所在地', '作業時間', '作業人数', '天候・気温',
+  '備考・連絡事項', '共有リンクURL'
+];
+var CAMERA_HEADERS = [
+  '送信日時', '現場名', '作業前', '作業後', '点検', '合計枚数', 'Driveフォルダ'
 ];
 
-// ===== POST受信処理 =====
+/* ================================================================
+   エントリーポイント
+   data.type で処理を振り分ける
+   ================================================================ */
 function doPost(e) {
   try {
-    var data  = JSON.parse(e.postData.contents);
-    var ss    = SpreadsheetApp.openById(SPREADSHEET_ID);
-    var sheet = ss.getSheetByName(SHEET_NAME) || ss.getActiveSheet();
-
-    // 1行目にヘッダーがなければ追加・書式設定・フィルター有効化
-    if (sheet.getLastRow() === 0) {
-      sheet.appendRow(HEADERS);
-      var headerRange = sheet.getRange(1, 1, 1, HEADERS.length);
-      headerRange.setFontWeight('bold').setBackground('#e8f5ec');
-      sheet.setFrozenRows(1);
-      sheet.getDataRange().createFilter();
-    }
-
-    // 送信日時（日本時間）
-    var jst = Utilities.formatDate(new Date(), 'Asia/Tokyo', 'yyyy/MM/dd HH:mm:ss');
-
-    // データ行を追加
-    sheet.appendRow([
-      jst,
-      data.date      || '',
-      data.project   || '',
-      data.staff     || '',
-      data.siteName  || '',
-      data.jobNo     || '',
-      data.location  || '',
-      data.workTime  || '',
-      data.workers   || '',
-      data.weather   || '',
-      data.remarks   || '',
-      data.icloudUrl || ''
-    ]);
-
-    // 行追加後にフィルターが外れる場合があるため再設定
-    if (!sheet.getFilter()) {
-      sheet.getDataRange().createFilter();
-    }
-
-    return ContentService
-      .createTextOutput(JSON.stringify({ status: 'ok' }))
-      .setMimeType(ContentService.MimeType.JSON);
-
+    var data = JSON.parse(e.postData.contents);
+    if (data.type === 'camera_photo') return savePhotoToDrive(data);
+    if (data.type === 'camera_asr')   return saveCameraToSheet(data);
+    return saveReportToSheet(data);
   } catch (err) {
-    return ContentService
-      .createTextOutput(JSON.stringify({ status: 'error', message: err.toString() }))
-      .setMimeType(ContentService.MimeType.JSON);
+    return makeJson({ status: 'error', message: err.toString() });
   }
+}
+
+/* ================================================================
+   ③ 写真を Google ドライブに保存
+   フォルダ構成: ASR / [現場名] / [日付] / [モード]
+   ================================================================ */
+function savePhotoToDrive(data) {
+  /* 同時リクエストによるフォルダ重複作成を防ぐ */
+  var lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+
+  try {
+    var siteName = (data.siteName || '未設定').replace(/[\/\\:*?"<>|]/g, '_');
+    var date     = data.date || todayJST();
+    var mode     = data.mode || '点検';
+
+    /* フォルダ階層を取得または作成 */
+    var root       = DriveApp.getRootFolder();
+    var asrFolder  = getOrCreateFolder('ASR',    root);
+    var siteFolder = getOrCreateFolder(siteName, asrFolder);
+    var dateFolder = getOrCreateFolder(date,     siteFolder);
+    var modeFolder = getOrCreateFolder(mode,     dateFolder);
+
+    /* 写真ファイルを保存 */
+    var filename = data.filename || (nowFilename() + '.jpg');
+    var bytes    = Utilities.base64Decode(data.imageData);
+    var blob     = Utilities.newBlob(bytes, data.mimeType || 'image/jpeg', filename);
+    modeFolder.createFile(blob);
+
+    /* 日付フォルダを「リンクを知っている全員が閲覧可」に設定 */
+    dateFolder.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+    var link = 'https://drive.google.com/drive/folders/' + dateFolder.getId();
+
+    return makeJson({ status: 'ok', link: link });
+
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+/* ================================================================
+   ② ASRカメラのサマリーをスプレッドシートに保存
+   ================================================================ */
+function saveCameraToSheet(data) {
+  var ss    = SpreadsheetApp.openById(SPREADSHEET_ID);
+  var sheet = ss.getSheetByName(CAMERA_SHEET);
+  if (!sheet) sheet = ss.insertSheet(CAMERA_SHEET);
+
+  if (sheet.getLastRow() === 0) {
+    sheet.appendRow(CAMERA_HEADERS);
+    sheet.getRange(1, 1, 1, CAMERA_HEADERS.length)
+         .setFontWeight('bold').setBackground('#dce8ff');
+    sheet.setFrozenRows(1);
+  }
+
+  var jst = Utilities.formatDate(new Date(), 'Asia/Tokyo', 'yyyy/MM/dd HH:mm:ss');
+  sheet.appendRow([
+    jst,
+    data.siteName    || '',
+    data.countBefore || 0,
+    data.countAfter  || 0,
+    data.countCheck  || 0,
+    data.totalCount  || 0,
+    data.driveLink   || ''
+  ]);
+
+  return makeJson({ status: 'ok' });
+}
+
+/* ================================================================
+   ① 報告書データをスプレッドシートに保存（index.html 用・既存処理）
+   ================================================================ */
+function saveReportToSheet(data) {
+  var ss    = SpreadsheetApp.openById(SPREADSHEET_ID);
+  var sheet = ss.getSheetByName(REPORT_SHEET) || ss.getActiveSheet();
+
+  if (sheet.getLastRow() === 0) {
+    sheet.appendRow(REPORT_HEADERS);
+    var hr = sheet.getRange(1, 1, 1, REPORT_HEADERS.length);
+    hr.setFontWeight('bold').setBackground('#e8f5ec');
+    sheet.setFrozenRows(1);
+    sheet.getDataRange().createFilter();
+  }
+
+  var jst = Utilities.formatDate(new Date(), 'Asia/Tokyo', 'yyyy/MM/dd HH:mm:ss');
+  sheet.appendRow([
+    jst,
+    data.workDate    || data.date      || '',
+    data.projectName || data.project   || '',
+    data.workerName  || data.staff     || '',
+    data.siteName    || '',
+    data.siteId      || data.jobNo     || '',
+    data.location    || '',
+    data.workTime    || '',
+    data.workerCount || data.workers   || '',
+    data.weather     || '',
+    data.remarks     || '',
+    data.shareLink   || data.icloudUrl || ''
+  ]);
+
+  if (!sheet.getFilter()) sheet.getDataRange().createFilter();
+
+  return makeJson({ status: 'ok' });
+}
+
+/* ================================================================
+   ヘルパー
+   ================================================================ */
+function getOrCreateFolder(name, parentFolder) {
+  var it = parentFolder.getFoldersByName(name);
+  if (it.hasNext()) return it.next();
+  return parentFolder.createFolder(name);
+}
+
+function todayJST() {
+  return Utilities.formatDate(new Date(), 'Asia/Tokyo', 'yyyy-MM-dd');
+}
+
+function nowFilename() {
+  return Utilities.formatDate(new Date(), 'Asia/Tokyo', 'yyyyMMdd_HHmmss');
+}
+
+function makeJson(obj) {
+  return ContentService
+    .createTextOutput(JSON.stringify(obj))
+    .setMimeType(ContentService.MimeType.JSON);
 }

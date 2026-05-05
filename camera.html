@@ -40,7 +40,8 @@
       cursor: pointer; -webkit-appearance: none; box-sizing: border-box;
     }
     .login-btn:active { background: #144821; }
-    #auth-logged-in { display: none; align-items: center; gap: 10px; }
+    #auth-logged-in { display: none; }
+    #auth-user-row { display: flex; align-items: center; gap: 10px; }
     #user-name-display { font-size: 14px; color: #1a5c2a; font-weight: bold; flex: 1; }
     .logout-btn {
       font-size: 13px; padding: 6px 14px;
@@ -60,19 +61,14 @@
       border-top: 1px solid #d8eedd;
     }
     #settings-panel label { font-size: 13px; font-weight: normal; color: #555; margin-bottom: 4px; }
-    #client-id-input {
-      font-size: 13px !important; padding: 7px !important;
-      border-width: 1px !important;
-    }
+    #client-id-input { font-size: 13px !important; padding: 7px !important; border-width: 1px !important; }
     .settings-save-btn {
       font-size: 13px; padding: 7px 16px; margin-top: 6px;
       background: #e8f5ec; color: #1a5c2a;
       border: 1px solid #a5d6a7; border-radius: 4px;
       cursor: pointer; -webkit-appearance: none;
     }
-    .settings-note {
-      font-size: 11px; color: #999; margin: 6px 0 0; line-height: 1.7;
-    }
+    .settings-note { font-size: 11px; color: #999; margin: 6px 0 0; line-height: 1.7; }
 
     /* ── Drive link ── */
     #drive-link-area {
@@ -80,10 +76,7 @@
       background: #e8f5ec; border: 1px solid #a5d6a7; border-radius: 6px;
     }
     .drive-link-label { font-size: 13px; font-weight: bold; color: #1a5c2a; }
-    #drive-link {
-      display: block; font-size: 13px; color: #1565c0;
-      word-break: break-all; margin-top: 3px;
-    }
+    #drive-link { display: block; font-size: 13px; color: #1565c0; word-break: break-all; margin-top: 3px; }
 
     /* ── Mode buttons ── */
     .mode-btns { display: flex; gap: 8px; margin-bottom: 16px; }
@@ -170,7 +163,7 @@
 <!-- ── Google Drive 認証 ── -->
 <div id="auth-bar">
   <div id="auth-logged-out">
-    <p id="auth-desc">📁 Googleドライブに自動アップロードするにはログインしてください<br>（ログインなしでも撮影・スプレッドシート送信は利用できます）</p>
+    <p id="auth-desc">📁 Googleドライブ連携（任意）<br>ログインすると撮影後に自動アップロードされます</p>
     <button class="login-btn" type="button" onclick="signIn()">Googleでログイン（Drive連携）</button>
     <button id="settings-toggle" type="button" onclick="toggleSettings()">⚙ Client ID を設定</button>
     <div id="settings-panel">
@@ -178,15 +171,17 @@
       <input type="text" id="client-id-input" placeholder="〇〇〇.apps.googleusercontent.com">
       <button class="settings-save-btn" type="button" onclick="saveClientId()">保存</button>
       <p class="settings-note">
-        取得手順：Google Cloud Console → 「APIとサービス」→「認証情報」<br>
+        Google Cloud Console → 「APIとサービス」→「認証情報」<br>
         → 「OAuth クライアント ID を作成」→ アプリの種類：ウェブアプリケーション<br>
         → 「承認済みの JavaScript 生成元」にこのページの URL を追加
       </p>
     </div>
   </div>
   <div id="auth-logged-in">
-    <span id="user-name-display"></span>
-    <button class="logout-btn" type="button" onclick="signOut()">ログアウト</button>
+    <div id="auth-user-row">
+      <span id="user-name-display"></span>
+      <button class="logout-btn" type="button" onclick="signOut()">ログアウト</button>
+    </div>
   </div>
 </div>
 
@@ -195,7 +190,7 @@
 <label for="site-name">現場名</label>
 <input type="text" id="site-name" placeholder="例：○○太陽光発電所">
 
-<!-- ── Drive フォルダリンク ── -->
+<!-- ── Drive フォルダリンク（アップロード後に表示） ── -->
 <div id="drive-link-area">
   <span class="drive-link-label">📁 Drive フォルダ（共有リンク）</span>
   <a id="drive-link" href="#" target="_blank"></a>
@@ -235,24 +230,21 @@
 </button>
 <div id="send-msg"></div>
 
-<!-- Google Identity Services -->
-<script src="https://accounts.google.com/gsi/client" onload="onGisLoad()" async defer></script>
-
+<!-- GIS は signIn() 呼び出し時に動的ロード。ページロード時には読み込まない -->
 <script>
 /* ======================================================
-   定数・状態
+   定数・状態変数
    ====================================================== */
 var GAS_URL      = 'https://script.google.com/macros/s/AKfycbxtnLLUlzeMgubyjW4fY9g2Cf2O2yS_P_p1mSOyaXlYUyrul1xm_tDCXVrl-PB3fqYw/exec';
 var CLIENT_ID_LS = 'asr_google_client_id';
 
 var accessToken    = null;
 var tokenClient    = null;
-var gisReady       = false;
 var currentMode    = '作業前';
-var photos         = [];     /* {id, mode, datetime, src, file} */
+var photos         = [];
 var photoId        = 0;
-var folderCache    = {};     /* 'parentId/name' → folderId */
-var dateFolderLink = null;   /* 現在セッションで取得した日付フォルダのリンク */
+var folderCache    = {};
+var dateFolderLink = null;
 
 var MODE_CFG = {
   '作業前': { btnId: 'btn-before', cntId: 'cnt-before', bg: '#1565c0' },
@@ -261,45 +253,44 @@ var MODE_CFG = {
 };
 
 /* ======================================================
-   設定（Client ID の localStorage 保存）
+   Client ID 設定（localStorage）
    ====================================================== */
-function loadClientId()  { return localStorage.getItem(CLIENT_ID_LS) || ''; }
+function loadClientId() { return localStorage.getItem(CLIENT_ID_LS) || ''; }
+
 function saveClientId() {
   var v = document.getElementById('client-id-input').value.trim();
   if (!v) { alert('Client ID を入力してください'); return; }
   localStorage.setItem(CLIENT_ID_LS, v);
-  alert('保存しました。ログインボタンを押してください。');
   document.getElementById('settings-panel').style.display = 'none';
+  alert('保存しました。ログインボタンを押してください。');
 }
+
 function toggleSettings() {
   var p = document.getElementById('settings-panel');
-  var show = (p.style.display !== 'block');
+  var show = p.style.display !== 'block';
   p.style.display = show ? 'block' : 'none';
   if (show) document.getElementById('client-id-input').value = loadClientId();
 }
 
 /* ======================================================
    Google 認証
+   GIS ライブラリをログイン時に動的ロードすることで
+   ページ初期表示への影響をゼロにする
    ====================================================== */
-function onGisLoad() {
-  gisReady = true;
-  var clientId = loadClientId();
-  if (clientId) buildTokenClient(clientId);
-}
-
-function buildTokenClient(clientId) {
-  tokenClient = google.accounts.oauth2.initTokenClient({
-    client_id: clientId,
-    scope: [
-      'https://www.googleapis.com/auth/drive.file',
-      'https://www.googleapis.com/auth/userinfo.profile'
-    ].join(' '),
-    callback: handleTokenResponse
-  });
+function loadGIS(callback) {
+  if (typeof google !== 'undefined' && google.accounts && google.accounts.oauth2) {
+    callback(); return;
+  }
+  var s = document.createElement('script');
+  s.src = 'https://accounts.google.com/gsi/client';
+  s.onload = callback;
+  s.onerror = function() {
+    alert('Google ライブラリの読み込みに失敗しました。\nネットワーク接続を確認してください。');
+  };
+  document.head.appendChild(s);
 }
 
 function signIn() {
-  if (!gisReady) { alert('Google ライブラリを読み込み中です。少し待ってから再試行してください。'); return; }
   var clientId = loadClientId();
   if (!clientId) {
     document.getElementById('settings-panel').style.display = 'block';
@@ -307,27 +298,47 @@ function signIn() {
     alert('先に Client ID を設定してください（⚙ Client ID を設定）');
     return;
   }
-  if (!tokenClient) buildTokenClient(clientId);
-  tokenClient.requestAccessToken({ prompt: '' });
+  loadGIS(function() {
+    if (!tokenClient) {
+      tokenClient = google.accounts.oauth2.initTokenClient({
+        client_id: clientId,
+        scope: [
+          'https://www.googleapis.com/auth/drive.file',
+          'https://www.googleapis.com/auth/userinfo.profile'
+        ].join(' '),
+        callback: handleTokenResponse
+      });
+    }
+    tokenClient.requestAccessToken({ prompt: '' });
+  });
 }
 
 function signOut() {
-  if (accessToken) google.accounts.oauth2.revoke(accessToken, function() {});
-  accessToken = null; folderCache = {}; dateFolderLink = null;
-  updateAuthUI(false);
+  if (accessToken && typeof google !== 'undefined') {
+    google.accounts.oauth2.revoke(accessToken, function() {});
+  }
+  accessToken = null;
+  tokenClient = null;
+  folderCache = {};
+  dateFolderLink = null;
+  document.getElementById('auth-logged-out').style.display = '';
+  document.getElementById('auth-logged-in').style.display  = 'none';
   document.getElementById('drive-link-area').style.display = 'none';
 }
 
-async function handleTokenResponse(resp) {
+function handleTokenResponse(resp) {
   if (resp.error) {
     console.error('Auth error:', resp);
-    alert('ログインに失敗しました: ' + resp.error_description);
+    alert('ログインに失敗しました: ' + (resp.error_description || resp.error));
     return;
   }
   accessToken = resp.access_token;
-  updateAuthUI(true);
+  document.getElementById('auth-logged-out').style.display = 'none';
+  document.getElementById('auth-logged-in').style.display  = 'block';
+
   fetchUserInfo();
-  /* ログイン前に撮影済みの写真をまとめてアップロード */
+
+  /* ログイン前に撮影済みの写真を順次アップロード */
   photos.forEach(function(p) {
     if (p.file) {
       showStatus(p.id, 'uploading', '⬆ 待機中');
@@ -336,117 +347,112 @@ async function handleTokenResponse(resp) {
   });
 }
 
-async function fetchUserInfo() {
-  try {
-    var r    = await fetch('https://www.googleapis.com/oauth2/v3/userinfo',
-                          { headers: { 'Authorization': 'Bearer ' + accessToken } });
-    var info = await r.json();
-    document.getElementById('user-name-display').textContent =
-      '✅ ' + (info.name || info.email || 'ログイン済み');
-  } catch (e) {
-    document.getElementById('user-name-display').textContent = '✅ ログイン済み';
-  }
-}
-
-function updateAuthUI(loggedIn) {
-  document.getElementById('auth-logged-out').style.display = loggedIn ? 'none' : '';
-  var li = document.getElementById('auth-logged-in');
-  li.style.display = loggedIn ? 'flex' : 'none';
+function fetchUserInfo() {
+  fetch('https://www.googleapis.com/oauth2/v3/userinfo',
+        { headers: { 'Authorization': 'Bearer ' + accessToken } })
+    .then(function(r) { return r.json(); })
+    .then(function(info) {
+      document.getElementById('user-name-display').textContent =
+        '✅ ' + (info.name || info.email || 'ログイン済み');
+    })
+    .catch(function() {
+      document.getElementById('user-name-display').textContent = '✅ ログイン済み';
+    });
 }
 
 /* ======================================================
    Drive API ヘルパー
    ====================================================== */
-async function driveGet(path, params) {
+function driveGet(path, params) {
   var url = 'https://www.googleapis.com/drive/v3/' + path;
   if (params) url += '?' + new URLSearchParams(params).toString();
-  var r = await fetch(url, { headers: { 'Authorization': 'Bearer ' + accessToken } });
-  if (r.status === 401) { signOut(); throw new Error('token_expired'); }
-  if (!r.ok) throw new Error('Drive GET ' + r.status);
-  return r.json();
+  return fetch(url, { headers: { 'Authorization': 'Bearer ' + accessToken } })
+    .then(function(r) {
+      if (r.status === 401) { signOut(); throw new Error('token_expired'); }
+      if (!r.ok) throw new Error('Drive GET ' + r.status);
+      return r.json();
+    });
 }
 
-async function drivePost(path, body, params) {
+function drivePostJSON(path, body, params) {
   var url = 'https://www.googleapis.com/drive/v3/' + path;
   if (params) url += '?' + new URLSearchParams(params).toString();
-  var r = await fetch(url, {
+  return fetch(url, {
     method: 'POST',
     headers: { 'Authorization': 'Bearer ' + accessToken, 'Content-Type': 'application/json' },
     body: JSON.stringify(body)
+  }).then(function(r) {
+    if (r.status === 401) { signOut(); throw new Error('token_expired'); }
+    if (!r.ok) throw new Error('Drive POST ' + r.status);
+    return r.json();
   });
-  if (r.status === 401) { signOut(); throw new Error('token_expired'); }
-  if (!r.ok) throw new Error('Drive POST ' + r.status);
-  return r.json();
 }
 
-/* フォルダを検索し、なければ作成してIDを返す */
-async function findOrCreateFolder(name, parentId) {
+function findOrCreateFolder(name, parentId) {
   var key = (parentId || 'root') + '/' + name;
-  if (folderCache[key]) return folderCache[key];
+  if (folderCache[key]) return Promise.resolve(folderCache[key]);
 
-  var q = "name='" + name.replace(/\\/g, '\\\\').replace(/'/g, "\\'") +
-          "' and mimeType='application/vnd.google-apps.folder' and trashed=false";
+  var safe = name.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+  var q = "name='" + safe + "' and mimeType='application/vnd.google-apps.folder' and trashed=false";
   if (parentId) q += " and '" + parentId + "' in parents";
 
-  var res = await driveGet('files', { q: q, fields: 'files(id)', spaces: 'drive' });
-  if (res.files && res.files.length > 0) {
-    folderCache[key] = res.files[0].id;
-    return res.files[0].id;
-  }
-
-  var body = { name: name, mimeType: 'application/vnd.google-apps.folder' };
-  if (parentId) body.parents = [parentId];
-  var created = await drivePost('files', body, { fields: 'id' });
-  folderCache[key] = created.id;
-  return created.id;
+  return driveGet('files', { q: q, fields: 'files(id)', spaces: 'drive' })
+    .then(function(res) {
+      if (res.files && res.files.length > 0) {
+        folderCache[key] = res.files[0].id;
+        return res.files[0].id;
+      }
+      var body = { name: name, mimeType: 'application/vnd.google-apps.folder' };
+      if (parentId) body.parents = [parentId];
+      return drivePostJSON('files', body, { fields: 'id' }).then(function(created) {
+        folderCache[key] = created.id;
+        return created.id;
+      });
+    });
 }
 
-/* マルチパートアップロード */
-async function uploadFileToDrive(file, folderId) {
+function uploadFileToDrive(file, folderId) {
   var ext      = (file.type === 'image/png') ? '.png' : '.jpg';
   var filename = formatDatetimeFile(new Date()) + ext;
   var meta     = JSON.stringify({ name: filename, parents: [folderId] });
-
-  var form = new FormData();
+  var form     = new FormData();
   form.append('metadata', new Blob([meta], { type: 'application/json' }));
   form.append('file', file);
 
-  var r = await fetch(
+  return fetch(
     'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id',
     { method: 'POST', headers: { 'Authorization': 'Bearer ' + accessToken }, body: form }
-  );
-  if (r.status === 401) { signOut(); throw new Error('token_expired'); }
-  if (!r.ok) throw new Error('Upload ' + r.status);
-  return r.json();
+  ).then(function(r) {
+    if (r.status === 401) { signOut(); throw new Error('token_expired'); }
+    if (!r.ok) throw new Error('Upload ' + r.status);
+    return r.json();
+  });
 }
 
-/* フォルダを「リンクを知っている全員が閲覧可」に設定して共有リンクを返す */
-async function publishFolder(folderId) {
-  try {
-    await fetch('https://www.googleapis.com/drive/v3/files/' + folderId + '/permissions', {
-      method: 'POST',
-      headers: { 'Authorization': 'Bearer ' + accessToken, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ type: 'anyone', role: 'reader' })
-    });
-  } catch (e) { /* 既に公開済みの場合は無視 */ }
-
-  var data = await driveGet('files/' + folderId, { fields: 'webViewLink' });
-  return data.webViewLink || null;
+function publishFolder(folderId) {
+  return fetch('https://www.googleapis.com/drive/v3/files/' + folderId + '/permissions', {
+    method: 'POST',
+    headers: { 'Authorization': 'Bearer ' + accessToken, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ type: 'anyone', role: 'reader' })
+  })
+  .catch(function() { /* already public */ })
+  .then(function() {
+    return driveGet('files/' + folderId, { fields: 'webViewLink' });
+  })
+  .then(function(data) { return data.webViewLink || null; });
 }
 
-/* フォルダ階層
-   ASR/[現場名]/[日付]/[モード]
-   日付フォルダIDを返す（リンク取得のため） */
-async function buildFolderPath(mode) {
+/* ASR/[現場名]/[日付]/[モード] のフォルダIDを返す */
+function buildFolderPath(mode) {
   var siteName = (document.getElementById('site-name').value.trim()) || '未設定';
   var today    = formatDate(new Date());
+  var asrId, siteId, dateId;
 
-  var asrId    = await findOrCreateFolder('ASR',     null);
-  var siteId   = await findOrCreateFolder(siteName,  asrId);
-  var dateId   = await findOrCreateFolder(today,     siteId);
-  var modeId   = await findOrCreateFolder(mode,      dateId);
-
-  return { modeId: modeId, dateId: dateId };
+  return findOrCreateFolder('ASR', null)
+    .then(function(id) { asrId = id;  return findOrCreateFolder(siteName, asrId); })
+    .then(function(id) { siteId = id; return findOrCreateFolder(today, siteId); })
+    .then(function(id) { dateId = id; return findOrCreateFolder(mode, dateId); })
+    .then(function(modeId) { return { modeId: modeId, dateId: dateId }; });
 }
 
 /* ======================================================
@@ -469,29 +475,31 @@ function onCapture(input) {
   input.value = '';
 }
 
-async function uploadPhoto(id, file, mode) {
+function uploadPhoto(id, file, mode) {
   showStatus(id, 'uploading', '⬆ アップロード中');
-  try {
-    var folders = await buildFolderPath(mode);
-
-    /* 日付フォルダの共有リンクをまだ取得していない場合のみ取得 */
-    if (!dateFolderLink) {
-      dateFolderLink = await publishFolder(folders.dateId);
-      if (dateFolderLink) {
-        var area = document.getElementById('drive-link-area');
-        var link = document.getElementById('drive-link');
-        area.style.display  = '';
-        link.href           = dateFolderLink;
-        link.textContent    = dateFolderLink;
+  buildFolderPath(mode)
+    .then(function(folders) {
+      if (!dateFolderLink) {
+        return publishFolder(folders.dateId)
+          .then(function(link) {
+            dateFolderLink = link;
+            if (link) {
+              var area = document.getElementById('drive-link-area');
+              var el   = document.getElementById('drive-link');
+              area.style.display = '';
+              el.href        = link;
+              el.textContent = link;
+            }
+            return uploadFileToDrive(file, folders.modeId);
+          });
       }
-    }
-
-    await uploadFileToDrive(file, folders.modeId);
-    showStatus(id, 'done', '✅ 完了');
-  } catch (e) {
-    console.error('Drive upload error:', e);
-    showStatus(id, 'error', '❌ 失敗');
-  }
+      return uploadFileToDrive(file, folders.modeId);
+    })
+    .then(function() { showStatus(id, 'done', '✅ 完了'); })
+    .catch(function(e) {
+      console.error('Drive upload error:', e);
+      showStatus(id, 'error', '❌ 失敗');
+    });
 }
 
 function showStatus(id, cls, text) {
@@ -540,7 +548,7 @@ function renderPhoto(p) {
   del.className = 'photo-del';
   del.type = 'button';
   del.textContent = '×';
-  del.onclick = (function(id) { return function() { removePhoto(id); }; })(p.id);
+  del.onclick = (function(xid) { return function() { removePhoto(xid); }; })(p.id);
 
   item.appendChild(img);
   item.appendChild(status);
@@ -606,37 +614,50 @@ function readExifDate(file, callback) {
         if (marker === 0xFFE1) {
           var segLen = view.getUint16(offset);
           if (view.getUint32(offset + 2) === 0x45786966 && view.getUint16(offset + 6) === 0x0000) {
-            var ts = offset + 8;
-            var le = (view.getUint16(ts) === 0x4949);
-            var ifd = ts + view.getUint32(ts + 4, le);
-            var n = view.getUint16(ifd, le);
-            var dateStr = null, exifPtr = null;
+            var ts      = offset + 8;
+            var le      = (view.getUint16(ts) === 0x4949);
+            var ifd     = ts + view.getUint32(ts + 4, le);
+            var n       = view.getUint16(ifd, le);
+            var dateStr = null;
+            var exifPtr = null;
             for (var i = 0; i < n; i++) {
-              var ep = ifd + 2 + i * 12;
+              var ep  = ifd + 2 + i * 12;
               var tag = view.getUint16(ep, le);
-              if (tag === 0x8769) exifPtr = ts + view.getUint32(ep + 8, le);
+              if (tag === 0x8769) { exifPtr = ts + view.getUint32(ep + 8, le); }
               if (tag === 0x0132) {
-                var vo = ts + view.getUint32(ep + 8, le); var s = '';
-                for (var j = 0; j < 19; j++) { var c = view.getUint8(vo + j); if (!c) break; s += String.fromCharCode(c); }
+                var vo = ts + view.getUint32(ep + 8, le);
+                var s  = '';
+                for (var j = 0; j < 19; j++) {
+                  var ch = view.getUint8(vo + j);
+                  if (!ch) break;
+                  s += String.fromCharCode(ch);
+                }
                 dateStr = s;
               }
             }
             if (exifPtr) {
               var ne = view.getUint16(exifPtr, le);
-              for (var i = 0; i < ne; i++) {
-                var ep = exifPtr + 2 + i * 12;
-                var tag = view.getUint16(ep, le);
-                if (tag === 0x9003) {
-                  var vo = ts + view.getUint32(ep + 8, le); var s = '';
-                  for (var j = 0; j < 19; j++) { var c = view.getUint8(vo + j); if (!c) break; s += String.fromCharCode(c); }
-                  dateStr = s; break;
+              for (var i2 = 0; i2 < ne; i2++) {
+                var ep2  = exifPtr + 2 + i2 * 12;
+                var tag2 = view.getUint16(ep2, le);
+                if (tag2 === 0x9003) {
+                  var vo2 = ts + view.getUint32(ep2 + 8, le);
+                  var s2  = '';
+                  for (var j2 = 0; j2 < 19; j2++) {
+                    var ch2 = view.getUint8(vo2 + j2);
+                    if (!ch2) break;
+                    s2 += String.fromCharCode(ch2);
+                  }
+                  dateStr = s2;
+                  break;
                 }
               }
             }
             if (dateStr) {
               var m = dateStr.match(/^(\d{4}):(\d{2}):(\d{2}) (\d{2}):(\d{2})/);
               if (m) {
-                callback(m[1] + '年' + parseInt(m[2]) + '月' + parseInt(m[3]) + '日 ' + m[4] + ':' + m[5]);
+                callback(m[1] + '年' + parseInt(m[2]) + '月' + parseInt(m[3]) + '日 ' +
+                         m[4] + ':' + m[5]);
                 return;
               }
             }
@@ -659,17 +680,21 @@ function readExifDate(file, callback) {
 /* ======================================================
    スプレッドシート送信（Drive リンクも含める）
    ====================================================== */
-async function sendToSheet() {
+function sendToSheet() {
   var btn = document.getElementById('send-btn');
   var msg = document.getElementById('send-msg');
 
   if (photos.length === 0) {
-    msg.textContent = '写真がありません';
-    msg.className   = 'err'; msg.style.display = 'block'; return;
+    msg.textContent   = '写真がありません';
+    msg.className     = 'err';
+    msg.style.display = 'block';
+    return;
   }
 
-  btn.disabled = true; btn.textContent = '送信中...';
-  msg.style.display = 'none'; msg.className = '';
+  btn.disabled      = true;
+  btn.textContent   = '送信中...';
+  msg.style.display = 'none';
+  msg.className     = '';
 
   var counts = { '作業前': 0, '作業後': 0, '点検': 0 };
   photos.forEach(function(p) { if (p.mode in counts) counts[p.mode]++; });
@@ -688,21 +713,29 @@ async function sendToSheet() {
 
   var controller = new AbortController();
   var timer = setTimeout(function() { controller.abort(); }, 15000);
-  try {
-    await fetch(GAS_URL, {
-      method: 'POST', mode: 'no-cors',
-      headers: { 'Content-Type': 'text/plain' },
-      body: JSON.stringify(payload), signal: controller.signal
-    });
+
+  fetch(GAS_URL, {
+    method:  'POST',
+    mode:    'no-cors',
+    headers: { 'Content-Type': 'text/plain' },
+    body:    JSON.stringify(payload),
+    signal:  controller.signal
+  })
+  .then(function() {
     clearTimeout(timer);
-    msg.textContent = '✅ 送信しました！'; msg.className = 'ok';
-  } catch (e) {
+    msg.textContent   = '✅ 送信しました！';
+    msg.className     = 'ok';
+  })
+  .catch(function() {
     clearTimeout(timer);
-    msg.textContent = '❌ 送信に失敗しました'; msg.className = 'err';
-  } finally {
-    btn.disabled = false; btn.textContent = '📊 スプレッドシートに送信';
+    msg.textContent   = '❌ 送信に失敗しました';
+    msg.className     = 'err';
+  })
+  .finally(function() {
+    btn.disabled      = false;
+    btn.textContent   = '📊 スプレッドシートに送信';
     msg.style.display = 'block';
-  }
+  });
 }
 </script>
 </body>

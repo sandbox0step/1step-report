@@ -18,7 +18,74 @@
     }
     h1 { font-size: 20px; margin: 8px 0 16px; }
     h2 { font-size: 17px; background: #2e7d45; color: #fff; padding: 8px 12px; margin: 20px -12px 12px; }
+    label { display: block; font-weight: bold; margin: 10px 0 4px; font-size: 15px; }
+    input[type=text] {
+      display: block; width: 100%; font-size: 16px;
+      padding: 10px; box-sizing: border-box;
+      color: #000; background: #fff;
+      border: 2px solid #333; border-radius: 4px;
+    }
 
+    /* ── Auth bar ── */
+    #auth-bar {
+      background: #f8fdf9; border: 1px solid #b2d8bc;
+      border-radius: 8px; padding: 12px 14px; margin-bottom: 8px;
+    }
+    #auth-desc { font-size: 13px; color: #555; margin: 0 0 10px; line-height: 1.6; }
+    .login-btn {
+      display: block; width: 100%;
+      font-size: 16px; font-weight: bold; padding: 13px;
+      background: #1a5c2a; color: #fff;
+      border: none; border-radius: 8px;
+      cursor: pointer; -webkit-appearance: none; box-sizing: border-box;
+    }
+    .login-btn:active { background: #144821; }
+    #auth-logged-in { display: none; align-items: center; gap: 10px; }
+    #user-name-display { font-size: 14px; color: #1a5c2a; font-weight: bold; flex: 1; }
+    .logout-btn {
+      font-size: 13px; padding: 6px 14px;
+      background: #fff; color: #c0392b;
+      border: 1px solid #c0392b; border-radius: 6px;
+      cursor: pointer; -webkit-appearance: none; white-space: nowrap;
+    }
+
+    /* ── Settings ── */
+    #settings-toggle {
+      display: block; font-size: 12px; color: #999; background: none;
+      border: none; cursor: pointer; text-decoration: underline;
+      margin-top: 10px; padding: 0;
+    }
+    #settings-panel {
+      display: none; margin-top: 10px; padding: 10px 0 0;
+      border-top: 1px solid #d8eedd;
+    }
+    #settings-panel label { font-size: 13px; font-weight: normal; color: #555; margin-bottom: 4px; }
+    #client-id-input {
+      font-size: 13px !important; padding: 7px !important;
+      border-width: 1px !important;
+    }
+    .settings-save-btn {
+      font-size: 13px; padding: 7px 16px; margin-top: 6px;
+      background: #e8f5ec; color: #1a5c2a;
+      border: 1px solid #a5d6a7; border-radius: 4px;
+      cursor: pointer; -webkit-appearance: none;
+    }
+    .settings-note {
+      font-size: 11px; color: #999; margin: 6px 0 0; line-height: 1.7;
+    }
+
+    /* ── Drive link ── */
+    #drive-link-area {
+      display: none; padding: 10px 12px; margin: 4px 0 8px;
+      background: #e8f5ec; border: 1px solid #a5d6a7; border-radius: 6px;
+    }
+    .drive-link-label { font-size: 13px; font-weight: bold; color: #1a5c2a; }
+    #drive-link {
+      display: block; font-size: 13px; color: #1565c0;
+      word-break: break-all; margin-top: 3px;
+    }
+
+    /* ── Mode buttons ── */
     .mode-btns { display: flex; gap: 8px; margin-bottom: 16px; }
     .mode-btn {
       flex: 1; font-size: 16px; font-weight: bold;
@@ -30,11 +97,9 @@
     .mode-btn.active { background: #1a5c2a; color: #fff; border-color: #1a5c2a; }
 
     .count-row { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
-    .count-badge {
-      font-size: 13px; font-weight: bold;
-      padding: 4px 12px; border-radius: 12px;
-    }
+    .count-badge { font-size: 13px; font-weight: bold; padding: 4px 12px; border-radius: 12px; }
 
+    /* ── Camera button ── */
     .cam-btn {
       display: block; width: 100%;
       font-size: 20px; font-weight: bold;
@@ -45,12 +110,21 @@
     }
     .cam-btn:active { background: #1a5c2a; }
 
+    /* ── Photo grid ── */
     .photo-grid { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
     .photo-item { position: relative; width: 120px; }
     .photo-item img {
       width: 120px; height: 120px; object-fit: cover;
       border: 1px solid #aaa; border-radius: 4px; display: block; cursor: pointer;
     }
+    .photo-status {
+      position: absolute; top: 3px; left: 3px;
+      font-size: 10px; font-weight: bold; padding: 2px 5px;
+      border-radius: 3px; line-height: 1.4; display: none;
+    }
+    .photo-status.uploading { background: rgba(0,0,0,0.65); color: #fff; }
+    .photo-status.done      { background: rgba(26,92,42,0.85); color: #fff; }
+    .photo-status.error     { background: rgba(192,57,43,0.85); color: #fff; }
     .photo-meta {
       position: absolute; bottom: 0; left: 0; right: 0;
       background: rgba(0,0,0,0.6); color: #fff;
@@ -71,6 +145,7 @@
     }
     .no-photo { color: #999; font-size: 14px; margin: 4px 0 12px; }
 
+    /* ── Send button ── */
     .send-btn {
       display: block; width: 100%;
       font-size: 17px; font-weight: bold;
@@ -92,19 +167,54 @@
 
 <h1>ASR カメラ</h1>
 
+<!-- ── Google Drive 認証 ── -->
+<div id="auth-bar">
+  <div id="auth-logged-out">
+    <p id="auth-desc">📁 Googleドライブに自動アップロードするにはログインしてください<br>（ログインなしでも撮影・スプレッドシート送信は利用できます）</p>
+    <button class="login-btn" type="button" onclick="signIn()">Googleでログイン（Drive連携）</button>
+    <button id="settings-toggle" type="button" onclick="toggleSettings()">⚙ Client ID を設定</button>
+    <div id="settings-panel">
+      <label for="client-id-input">Google OAuth 2.0 Client ID</label>
+      <input type="text" id="client-id-input" placeholder="〇〇〇.apps.googleusercontent.com">
+      <button class="settings-save-btn" type="button" onclick="saveClientId()">保存</button>
+      <p class="settings-note">
+        取得手順：Google Cloud Console → 「APIとサービス」→「認証情報」<br>
+        → 「OAuth クライアント ID を作成」→ アプリの種類：ウェブアプリケーション<br>
+        → 「承認済みの JavaScript 生成元」にこのページの URL を追加
+      </p>
+    </div>
+  </div>
+  <div id="auth-logged-in">
+    <span id="user-name-display"></span>
+    <button class="logout-btn" type="button" onclick="signOut()">ログアウト</button>
+  </div>
+</div>
+
+<!-- ── 現場情報 ── -->
+<h2>現場情報</h2>
+<label for="site-name">現場名</label>
+<input type="text" id="site-name" placeholder="例：○○太陽光発電所">
+
+<!-- ── Drive フォルダリンク ── -->
+<div id="drive-link-area">
+  <span class="drive-link-label">📁 Drive フォルダ（共有リンク）</span>
+  <a id="drive-link" href="#" target="_blank"></a>
+</div>
+
+<!-- ── モード選択 ── -->
 <h2>モード選択</h2>
 <div class="mode-btns">
   <button class="mode-btn active" id="btn-before" type="button" onclick="setMode('作業前')">作業前</button>
   <button class="mode-btn"        id="btn-after"  type="button" onclick="setMode('作業後')">作業後</button>
   <button class="mode-btn"        id="btn-check"  type="button" onclick="setMode('点検')">点検</button>
 </div>
-
 <div class="count-row">
   <span class="count-badge" id="cnt-before" style="background:#dce8ff;color:#1565c0;">作業前: 0枚</span>
   <span class="count-badge" id="cnt-after"  style="background:#fff3e0;color:#e65100;">作業後: 0枚</span>
   <span class="count-badge" id="cnt-check"  style="background:#f3e5f5;color:#6a1b9a;">点検: 0枚</span>
 </div>
 
+<!-- ── 撮影 ── -->
 <input type="file" id="cam-input" accept="image/*" capture="environment"
        style="display:none" onchange="onCapture(this)">
 <button class="cam-btn" type="button"
@@ -112,23 +222,37 @@
   📷 撮影（<span id="current-mode-label">作業前</span>）
 </button>
 
+<!-- ── 撮影済み写真 ── -->
 <h2>撮影済み写真</h2>
 <div id="photo-grid" class="photo-grid">
   <p class="no-photo" id="no-photo-msg">まだ写真がありません</p>
 </div>
 
+<!-- ── スプレッドシート送信 ── -->
 <h2>スプレッドシート送信</h2>
 <button class="send-btn" id="send-btn" type="button" onclick="sendToSheet()">
   📊 スプレッドシートに送信
 </button>
 <div id="send-msg"></div>
 
-<script>
-var GAS_URL = 'https://script.google.com/macros/s/AKfycbxtnLLUlzeMgubyjW4fY9g2Cf2O2yS_P_p1mSOyaXlYUyrul1xm_tDCXVrl-PB3fqYw/exec';
+<!-- Google Identity Services -->
+<script src="https://accounts.google.com/gsi/client" onload="onGisLoad()" async defer></script>
 
-var currentMode = '作業前';
-var photos = [];
-var photoId = 0;
+<script>
+/* ======================================================
+   定数・状態
+   ====================================================== */
+var GAS_URL      = 'https://script.google.com/macros/s/AKfycbxtnLLUlzeMgubyjW4fY9g2Cf2O2yS_P_p1mSOyaXlYUyrul1xm_tDCXVrl-PB3fqYw/exec';
+var CLIENT_ID_LS = 'asr_google_client_id';
+
+var accessToken    = null;
+var tokenClient    = null;
+var gisReady       = false;
+var currentMode    = '作業前';
+var photos         = [];     /* {id, mode, datetime, src, file} */
+var photoId        = 0;
+var folderCache    = {};     /* 'parentId/name' → folderId */
+var dateFolderLink = null;   /* 現在セッションで取得した日付フォルダのリンク */
 
 var MODE_CFG = {
   '作業前': { btnId: 'btn-before', cntId: 'cnt-before', bg: '#1565c0' },
@@ -136,20 +260,198 @@ var MODE_CFG = {
   '点検':   { btnId: 'btn-check',  cntId: 'cnt-check',  bg: '#6a1b9a' }
 };
 
-function setMode(mode) {
-  currentMode = mode;
-  document.getElementById('current-mode-label').textContent = mode;
-  Object.keys(MODE_CFG).forEach(function(m) {
-    var btn = document.getElementById(MODE_CFG[m].btnId);
-    btn.classList.toggle('active', m === mode);
+/* ======================================================
+   設定（Client ID の localStorage 保存）
+   ====================================================== */
+function loadClientId()  { return localStorage.getItem(CLIENT_ID_LS) || ''; }
+function saveClientId() {
+  var v = document.getElementById('client-id-input').value.trim();
+  if (!v) { alert('Client ID を入力してください'); return; }
+  localStorage.setItem(CLIENT_ID_LS, v);
+  alert('保存しました。ログインボタンを押してください。');
+  document.getElementById('settings-panel').style.display = 'none';
+}
+function toggleSettings() {
+  var p = document.getElementById('settings-panel');
+  var show = (p.style.display !== 'block');
+  p.style.display = show ? 'block' : 'none';
+  if (show) document.getElementById('client-id-input').value = loadClientId();
+}
+
+/* ======================================================
+   Google 認証
+   ====================================================== */
+function onGisLoad() {
+  gisReady = true;
+  var clientId = loadClientId();
+  if (clientId) buildTokenClient(clientId);
+}
+
+function buildTokenClient(clientId) {
+  tokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: clientId,
+    scope: [
+      'https://www.googleapis.com/auth/drive.file',
+      'https://www.googleapis.com/auth/userinfo.profile'
+    ].join(' '),
+    callback: handleTokenResponse
   });
 }
 
-function formatDatetime(d) {
-  return d.getFullYear() + '年' + (d.getMonth() + 1) + '月' + d.getDate() + '日 ' +
-    ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2);
+function signIn() {
+  if (!gisReady) { alert('Google ライブラリを読み込み中です。少し待ってから再試行してください。'); return; }
+  var clientId = loadClientId();
+  if (!clientId) {
+    document.getElementById('settings-panel').style.display = 'block';
+    document.getElementById('client-id-input').focus();
+    alert('先に Client ID を設定してください（⚙ Client ID を設定）');
+    return;
+  }
+  if (!tokenClient) buildTokenClient(clientId);
+  tokenClient.requestAccessToken({ prompt: '' });
 }
 
+function signOut() {
+  if (accessToken) google.accounts.oauth2.revoke(accessToken, function() {});
+  accessToken = null; folderCache = {}; dateFolderLink = null;
+  updateAuthUI(false);
+  document.getElementById('drive-link-area').style.display = 'none';
+}
+
+async function handleTokenResponse(resp) {
+  if (resp.error) {
+    console.error('Auth error:', resp);
+    alert('ログインに失敗しました: ' + resp.error_description);
+    return;
+  }
+  accessToken = resp.access_token;
+  updateAuthUI(true);
+  fetchUserInfo();
+  /* ログイン前に撮影済みの写真をまとめてアップロード */
+  photos.forEach(function(p) {
+    if (p.file) {
+      showStatus(p.id, 'uploading', '⬆ 待機中');
+      uploadPhoto(p.id, p.file, p.mode);
+    }
+  });
+}
+
+async function fetchUserInfo() {
+  try {
+    var r    = await fetch('https://www.googleapis.com/oauth2/v3/userinfo',
+                          { headers: { 'Authorization': 'Bearer ' + accessToken } });
+    var info = await r.json();
+    document.getElementById('user-name-display').textContent =
+      '✅ ' + (info.name || info.email || 'ログイン済み');
+  } catch (e) {
+    document.getElementById('user-name-display').textContent = '✅ ログイン済み';
+  }
+}
+
+function updateAuthUI(loggedIn) {
+  document.getElementById('auth-logged-out').style.display = loggedIn ? 'none' : '';
+  var li = document.getElementById('auth-logged-in');
+  li.style.display = loggedIn ? 'flex' : 'none';
+}
+
+/* ======================================================
+   Drive API ヘルパー
+   ====================================================== */
+async function driveGet(path, params) {
+  var url = 'https://www.googleapis.com/drive/v3/' + path;
+  if (params) url += '?' + new URLSearchParams(params).toString();
+  var r = await fetch(url, { headers: { 'Authorization': 'Bearer ' + accessToken } });
+  if (r.status === 401) { signOut(); throw new Error('token_expired'); }
+  if (!r.ok) throw new Error('Drive GET ' + r.status);
+  return r.json();
+}
+
+async function drivePost(path, body, params) {
+  var url = 'https://www.googleapis.com/drive/v3/' + path;
+  if (params) url += '?' + new URLSearchParams(params).toString();
+  var r = await fetch(url, {
+    method: 'POST',
+    headers: { 'Authorization': 'Bearer ' + accessToken, 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+  if (r.status === 401) { signOut(); throw new Error('token_expired'); }
+  if (!r.ok) throw new Error('Drive POST ' + r.status);
+  return r.json();
+}
+
+/* フォルダを検索し、なければ作成してIDを返す */
+async function findOrCreateFolder(name, parentId) {
+  var key = (parentId || 'root') + '/' + name;
+  if (folderCache[key]) return folderCache[key];
+
+  var q = "name='" + name.replace(/\\/g, '\\\\').replace(/'/g, "\\'") +
+          "' and mimeType='application/vnd.google-apps.folder' and trashed=false";
+  if (parentId) q += " and '" + parentId + "' in parents";
+
+  var res = await driveGet('files', { q: q, fields: 'files(id)', spaces: 'drive' });
+  if (res.files && res.files.length > 0) {
+    folderCache[key] = res.files[0].id;
+    return res.files[0].id;
+  }
+
+  var body = { name: name, mimeType: 'application/vnd.google-apps.folder' };
+  if (parentId) body.parents = [parentId];
+  var created = await drivePost('files', body, { fields: 'id' });
+  folderCache[key] = created.id;
+  return created.id;
+}
+
+/* マルチパートアップロード */
+async function uploadFileToDrive(file, folderId) {
+  var ext      = (file.type === 'image/png') ? '.png' : '.jpg';
+  var filename = formatDatetimeFile(new Date()) + ext;
+  var meta     = JSON.stringify({ name: filename, parents: [folderId] });
+
+  var form = new FormData();
+  form.append('metadata', new Blob([meta], { type: 'application/json' }));
+  form.append('file', file);
+
+  var r = await fetch(
+    'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id',
+    { method: 'POST', headers: { 'Authorization': 'Bearer ' + accessToken }, body: form }
+  );
+  if (r.status === 401) { signOut(); throw new Error('token_expired'); }
+  if (!r.ok) throw new Error('Upload ' + r.status);
+  return r.json();
+}
+
+/* フォルダを「リンクを知っている全員が閲覧可」に設定して共有リンクを返す */
+async function publishFolder(folderId) {
+  try {
+    await fetch('https://www.googleapis.com/drive/v3/files/' + folderId + '/permissions', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + accessToken, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type: 'anyone', role: 'reader' })
+    });
+  } catch (e) { /* 既に公開済みの場合は無視 */ }
+
+  var data = await driveGet('files/' + folderId, { fields: 'webViewLink' });
+  return data.webViewLink || null;
+}
+
+/* フォルダ階層
+   ASR/[現場名]/[日付]/[モード]
+   日付フォルダIDを返す（リンク取得のため） */
+async function buildFolderPath(mode) {
+  var siteName = (document.getElementById('site-name').value.trim()) || '未設定';
+  var today    = formatDate(new Date());
+
+  var asrId    = await findOrCreateFolder('ASR',     null);
+  var siteId   = await findOrCreateFolder(siteName,  asrId);
+  var dateId   = await findOrCreateFolder(today,     siteId);
+  var modeId   = await findOrCreateFolder(mode,      dateId);
+
+  return { modeId: modeId, dateId: dateId };
+}
+
+/* ======================================================
+   撮影・アップロード
+   ====================================================== */
 function onCapture(input) {
   if (!input.files || !input.files[0]) return;
   var file = input.files[0];
@@ -159,11 +461,56 @@ function onCapture(input) {
     var datetime = exifDate || formatDatetime(now);
     var id  = ++photoId;
     var src = URL.createObjectURL(file);
-    photos.push({ id: id, mode: mode, datetime: datetime, src: src });
+    photos.push({ id: id, mode: mode, datetime: datetime, src: src, file: file });
     renderPhoto({ id: id, mode: mode, datetime: datetime, src: src });
     updateCounts();
+    if (accessToken) uploadPhoto(id, file, mode);
   });
   input.value = '';
+}
+
+async function uploadPhoto(id, file, mode) {
+  showStatus(id, 'uploading', '⬆ アップロード中');
+  try {
+    var folders = await buildFolderPath(mode);
+
+    /* 日付フォルダの共有リンクをまだ取得していない場合のみ取得 */
+    if (!dateFolderLink) {
+      dateFolderLink = await publishFolder(folders.dateId);
+      if (dateFolderLink) {
+        var area = document.getElementById('drive-link-area');
+        var link = document.getElementById('drive-link');
+        area.style.display  = '';
+        link.href           = dateFolderLink;
+        link.textContent    = dateFolderLink;
+      }
+    }
+
+    await uploadFileToDrive(file, folders.modeId);
+    showStatus(id, 'done', '✅ 完了');
+  } catch (e) {
+    console.error('Drive upload error:', e);
+    showStatus(id, 'error', '❌ 失敗');
+  }
+}
+
+function showStatus(id, cls, text) {
+  var el = document.getElementById('photo-status-' + id);
+  if (!el) return;
+  el.className   = 'photo-status ' + cls;
+  el.textContent = text;
+  el.style.display = '';
+}
+
+/* ======================================================
+   UI
+   ====================================================== */
+function setMode(mode) {
+  currentMode = mode;
+  document.getElementById('current-mode-label').textContent = mode;
+  Object.keys(MODE_CFG).forEach(function(m) {
+    document.getElementById(MODE_CFG[m].btnId).classList.toggle('active', m === mode);
+  });
 }
 
 function renderPhoto(p) {
@@ -177,6 +524,10 @@ function renderPhoto(p) {
   var img = document.createElement('img');
   img.src = p.src;
   img.onclick = (function(s) { return function() { window.open(s, '_blank'); }; })(p.src);
+
+  var status = document.createElement('div');
+  status.id = 'photo-status-' + p.id;
+  status.className = 'photo-status';
 
   var cfg = MODE_CFG[p.mode] || { bg: '#333' };
   var meta = document.createElement('div');
@@ -192,6 +543,7 @@ function renderPhoto(p) {
   del.onclick = (function(id) { return function() { removePhoto(id); }; })(p.id);
 
   item.appendChild(img);
+  item.appendChild(status);
   item.appendChild(meta);
   item.appendChild(del);
   document.getElementById('photo-grid').appendChild(item);
@@ -216,7 +568,30 @@ function updateCounts() {
   document.getElementById('cnt-check').textContent  = '点検: '   + counts['点検']   + '枚';
 }
 
-/* JPEGのEXIF DateTimeOriginalを読み取る（index.htmlと同一実装） */
+/* ======================================================
+   日付・時刻フォーマット
+   ====================================================== */
+function formatDate(d) {
+  return d.getFullYear() + '-' +
+    ('0' + (d.getMonth() + 1)).slice(-2) + '-' +
+    ('0' + d.getDate()).slice(-2);
+}
+function formatDatetime(d) {
+  return d.getFullYear() + '年' + (d.getMonth() + 1) + '月' + d.getDate() + '日 ' +
+    ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2);
+}
+function formatDatetimeFile(d) {
+  return d.getFullYear() +
+    ('0' + (d.getMonth() + 1)).slice(-2) +
+    ('0' + d.getDate()).slice(-2) + '_' +
+    ('0' + d.getHours()).slice(-2) +
+    ('0' + d.getMinutes()).slice(-2) +
+    ('0' + d.getSeconds()).slice(-2);
+}
+
+/* ======================================================
+   EXIF 撮影日時読み取り（index.html と同一実装）
+   ====================================================== */
 function readExifDate(file, callback) {
   var reader = new FileReader();
   reader.onload = function(e) {
@@ -237,12 +612,11 @@ function readExifDate(file, callback) {
             var n = view.getUint16(ifd, le);
             var dateStr = null, exifPtr = null;
             for (var i = 0; i < n; i++) {
-              var ep  = ifd + 2 + i * 12;
+              var ep = ifd + 2 + i * 12;
               var tag = view.getUint16(ep, le);
               if (tag === 0x8769) exifPtr = ts + view.getUint32(ep + 8, le);
               if (tag === 0x0132) {
-                var vo = ts + view.getUint32(ep + 8, le);
-                var s  = '';
+                var vo = ts + view.getUint32(ep + 8, le); var s = '';
                 for (var j = 0; j < 19; j++) { var c = view.getUint8(vo + j); if (!c) break; s += String.fromCharCode(c); }
                 dateStr = s;
               }
@@ -250,14 +624,12 @@ function readExifDate(file, callback) {
             if (exifPtr) {
               var ne = view.getUint16(exifPtr, le);
               for (var i = 0; i < ne; i++) {
-                var ep  = exifPtr + 2 + i * 12;
+                var ep = exifPtr + 2 + i * 12;
                 var tag = view.getUint16(ep, le);
                 if (tag === 0x9003) {
-                  var vo = ts + view.getUint32(ep + 8, le);
-                  var s  = '';
+                  var vo = ts + view.getUint32(ep + 8, le); var s = '';
                   for (var j = 0; j < 19; j++) { var c = view.getUint8(vo + j); if (!c) break; s += String.fromCharCode(c); }
-                  dateStr = s;
-                  break;
+                  dateStr = s; break;
                 }
               }
             }
@@ -284,21 +656,20 @@ function readExifDate(file, callback) {
   reader.readAsArrayBuffer(file.slice(0, 65536));
 }
 
+/* ======================================================
+   スプレッドシート送信（Drive リンクも含める）
+   ====================================================== */
 async function sendToSheet() {
   var btn = document.getElementById('send-btn');
   var msg = document.getElementById('send-msg');
 
   if (photos.length === 0) {
-    msg.textContent   = '写真がありません';
-    msg.className     = 'err';
-    msg.style.display = 'block';
-    return;
+    msg.textContent = '写真がありません';
+    msg.className   = 'err'; msg.style.display = 'block'; return;
   }
 
-  btn.disabled    = true;
-  btn.textContent = '送信中...';
-  msg.style.display = 'none';
-  msg.className     = '';
+  btn.disabled = true; btn.textContent = '送信中...';
+  msg.style.display = 'none'; msg.className = '';
 
   var counts = { '作業前': 0, '作業後': 0, '点検': 0 };
   photos.forEach(function(p) { if (p.mode in counts) counts[p.mode]++; });
@@ -306,6 +677,8 @@ async function sendToSheet() {
   var payload = {
     type:        'camera_asr',
     capturedAt:  new Date().toISOString(),
+    siteName:    (document.getElementById('site-name').value.trim()) || '',
+    driveLink:   dateFolderLink || '',
     countBefore: counts['作業前'],
     countAfter:  counts['作業後'],
     countCheck:  counts['点検'],
@@ -315,25 +688,19 @@ async function sendToSheet() {
 
   var controller = new AbortController();
   var timer = setTimeout(function() { controller.abort(); }, 15000);
-
   try {
     await fetch(GAS_URL, {
-      method:  'POST',
-      mode:    'no-cors',
+      method: 'POST', mode: 'no-cors',
       headers: { 'Content-Type': 'text/plain' },
-      body:    JSON.stringify(payload),
-      signal:  controller.signal
+      body: JSON.stringify(payload), signal: controller.signal
     });
     clearTimeout(timer);
-    msg.textContent = '✅ 送信しました！';
-    msg.className   = 'ok';
+    msg.textContent = '✅ 送信しました！'; msg.className = 'ok';
   } catch (e) {
     clearTimeout(timer);
-    msg.textContent = '❌ 送信に失敗しました';
-    msg.className   = 'err';
+    msg.textContent = '❌ 送信に失敗しました'; msg.className = 'err';
   } finally {
-    btn.disabled    = false;
-    btn.textContent = '📊 スプレッドシートに送信';
+    btn.disabled = false; btn.textContent = '📊 スプレッドシートに送信';
     msg.style.display = 'block';
   }
 }

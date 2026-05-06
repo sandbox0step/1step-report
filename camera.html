@@ -7,7 +7,6 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="ASRカメラ">
-  <!-- exifr lite: EXIF（撮影日時・GPS）の読み取りに使用 -->
   <script src="https://cdn.jsdelivr.net/npm/exifr/dist/lite.umd.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; }
@@ -28,16 +27,16 @@
       border: 2px solid #333; border-radius: 4px;
     }
 
-    /* ── GPS ステータス ── */
+    /* GPS */
     #gps-status {
       font-size: 12px; padding: 6px 10px; border-radius: 4px; margin-bottom: 12px;
       background: #f0f4f8; border: 1px solid #b0bec5; color: #555;
-      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
     }
     #gps-status.ok  { background: #e8f5ec; border-color: #a5d6a7; color: #1a5c2a; }
     #gps-status.err { background: #fdecea; border-color: #ef9a9a; color: #c0392b; }
 
-    /* ── モードボタン ── */
+    /* モードボタン */
     .mode-btns { display: flex; gap: 8px; margin-bottom: 14px; }
     .mode-btn {
       flex: 1; font-size: 15px; font-weight: bold; padding: 14px 4px;
@@ -45,18 +44,14 @@
       border: 2px solid #ddd; border-radius: 8px;
       cursor: pointer; -webkit-appearance: none;
     }
-    .mode-btn.active { color: #fff; border-color: transparent; }
-    #btn-before.active { background: #1565c0; }
-    #btn-after.active  { background: #e65100; }
-    #btn-check.active  { background: #6a1b9a; }
+    #btn-before.active { background: #1565c0; color: #fff; border-color: #1565c0; }
+    #btn-after.active  { background: #e65100; color: #fff; border-color: #e65100; }
+    #btn-check.active  { background: #6a1b9a; color: #fff; border-color: #6a1b9a; }
 
-    .count-row { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
-    .count-badge { font-size: 13px; font-weight: bold; padding: 4px 12px; border-radius: 12px; }
-
-    /* ── 写真選択ボタン ── */
+    /* 選択ボタン */
     .select-btn {
-      display: block; width: 100%; font-size: 19px; font-weight: bold;
-      padding: 20px; margin: 0 0 8px;
+      display: block; width: 100%; font-size: 18px; font-weight: bold;
+      padding: 18px; margin: 0 0 4px;
       background: #2e7d45; color: #fff;
       border: none; border-radius: 8px;
       cursor: pointer; -webkit-appearance: none;
@@ -64,243 +59,203 @@
     .select-btn:active   { background: #1a5c2a; }
     .select-btn:disabled { background: #90a4ae; cursor: not-allowed; }
 
-    /* ── 写真グリッド ── */
-    .photo-grid { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
-    .photo-item { position: relative; width: 110px; flex-shrink: 0; }
-    .photo-item img {
-      width: 110px; height: 110px; object-fit: cover;
-      border: 1px solid #aaa; border-radius: 4px; display: block; cursor: pointer;
+    /* カテゴリブロック */
+    .cat-block { border: 1px solid #ddd; border-radius: 8px; margin-bottom: 10px; overflow: hidden; }
+    .cat-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 8px 12px; font-weight: bold; font-size: 15px;
     }
-    .photo-status {
-      position: absolute; top: 3px; left: 3px;
-      font-size: 10px; font-weight: bold; padding: 2px 5px;
-      border-radius: 3px; line-height: 1.4; display: none;
+    .cat-block[data-mode="作業前"] .cat-header { background: #dce8ff; color: #1565c0; }
+    .cat-block[data-mode="作業後"] .cat-header { background: #fff3e0; color: #bf360c; }
+    .cat-block[data-mode="点検"]   .cat-header { background: #f3e5f5; color: #6a1b9a; }
+    .cat-count { font-size: 13px; font-weight: normal; }
+    .cat-grid  { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px; min-height: 20px; }
+    .cat-empty { color: #aaa; font-size: 13px; margin: 0; }
+
+    /* サムネイル */
+    .thumb-item { position: relative; width: 80px; flex-shrink: 0; }
+    .thumb-item img {
+      width: 80px; height: 80px; object-fit: cover;
+      border-radius: 4px; display: block; cursor: pointer;
     }
-    .photo-status.pending   { background: rgba(150,80,0,0.82);  color: #fff; display: block; }
-    .photo-status.uploading { background: rgba(0,0,0,0.65);     color: #fff; display: block; }
-    .photo-status.done      { background: rgba(26,92,42,0.82);  color: #fff; display: block; }
-    .photo-status.error     { background: rgba(192,57,43,0.82); color: #fff; display: block; }
-    .photo-meta {
+    .thumb-meta {
       position: absolute; bottom: 0; left: 0; right: 0;
       background: rgba(0,0,0,0.62); color: #fff;
-      font-size: 9px; padding: 3px 5px;
-      border-radius: 0 0 4px 4px; line-height: 1.45;
+      font-size: 8px; padding: 2px 4px; line-height: 1.4;
+      border-radius: 0 0 4px 4px;
     }
-    .photo-mode-badge {
-      display: inline-block; font-size: 10px; font-weight: bold;
-      padding: 1px 5px; border-radius: 3px; margin-bottom: 1px;
-    }
-    .photo-del {
+    .thumb-del {
       position: absolute; top: 0; right: 0;
-      width: 30px; height: 30px;
+      width: 24px; height: 24px;
       background: rgba(200,0,0,0.85); color: #fff;
-      border: none; border-radius: 0 4px 0 6px;
-      font-size: 16px; font-weight: bold; line-height: 30px; text-align: center;
+      border: none; border-radius: 0 4px 0 5px;
+      font-size: 14px; font-weight: bold; line-height: 24px; text-align: center;
       cursor: pointer; -webkit-appearance: none; padding: 0;
     }
-    .no-photo { color: #999; font-size: 14px; margin: 4px 0 12px; }
 
-    /* ── 反映ボタン ── */
-    .apply-btn {
-      display: block; width: 100%; font-size: 19px; font-weight: bold;
-      padding: 20px; margin: 0 0 8px;
+    /* リンク発行ボタン */
+    .issue-btn {
+      display: block; width: 100%; font-size: 18px; font-weight: bold;
+      padding: 18px; margin: 0 0 8px;
       background: #1565c0; color: #fff;
       border: none; border-radius: 8px;
       cursor: pointer; -webkit-appearance: none;
     }
-    .apply-btn:active   { background: #0d47a1; }
-    .apply-btn:disabled { background: #90a4ae; cursor: not-allowed; }
+    .issue-btn:active   { background: #0d47a1; }
+    .issue-btn:disabled { background: #90a4ae; cursor: not-allowed; }
 
-    /* ── プログレス ── */
+    /* プログレス */
     #progress-area {
       display: none; font-size: 14px; font-weight: bold; text-align: center;
       padding: 10px 12px; margin-bottom: 8px;
       background: #e3f2fd; border: 1px solid #90caf9; border-radius: 6px;
     }
     #progress-bar-outer { background: #bbdefb; border-radius: 4px; height: 8px; margin-top: 6px; }
-    #progress-bar       { background: #1565c0; height: 8px; border-radius: 4px; width: 0; transition: width 0.25s; }
+    #progress-bar { background: #1565c0; height: 8px; border-radius: 4px; width: 0; transition: width 0.2s; }
 
-    /* ── 反映結果メッセージ ── */
-    #apply-msg {
-      display: none; font-size: 14px; font-weight: bold; text-align: center;
-      padding: 8px 12px; border-radius: 6px; margin-bottom: 8px;
+    /* メッセージ */
+    .msg {
+      font-size: 14px; font-weight: bold; padding: 8px 12px;
+      border-radius: 6px; margin-bottom: 8px; display: none;
     }
-    #apply-msg.ok  { background: #e8f5ec; color: #1a5c2a; border: 1px solid #a5d6a7; }
-    #apply-msg.err { background: #fdecea; color: #c0392b; border: 1px solid #ef9a9a; }
+    .msg.ok  { background: #e8f5ec; color: #1a5c2a; border: 1px solid #a5d6a7; display: block; }
+    .msg.err { background: #fdecea; color: #c0392b; border: 1px solid #ef9a9a; display: block; }
 
-    /* ── ASR セクション（反映後に表示） ── */
-    #asr-section { display: none; }
-
-    /* モード別ブロック */
-    .asr-mode-block { margin-bottom: 20px; }
-    .asr-mode-header {
-      display: flex; align-items: baseline; gap: 8px;
-      margin-bottom: 8px;
-    }
-    .asr-mode-title { font-size: 15px; font-weight: bold; }
-    .asr-mode-count { font-size: 13px; color: #666; }
-
-    /* 代表写真グリッド */
-    .rep-grid { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
-    .rep-item { position: relative; width: 110px; flex-shrink: 0; }
-    .rep-item img {
-      width: 110px; height: 110px; object-fit: cover;
-      border-radius: 4px; display: block; cursor: pointer;
-    }
-    .asr-mode-block[data-mode="作業前"] .rep-item img { border: 2px solid #1565c0; }
-    .asr-mode-block[data-mode="作業後"] .rep-item img { border: 2px solid #e65100; }
-    .asr-mode-block[data-mode="点検"]   .rep-item img { border: 2px solid #6a1b9a; }
-
-    /* アルバムURLリンク */
-    .album-url-row {
-      display: none; /* GASからリンクが返った場合のみ表示 */
-      align-items: stretch; gap: 8px; margin-top: 4px;
-    }
-    .album-url-row.visible { display: flex; }
-    .album-url-label { font-size: 12px; font-weight: bold; color: #1a5c2a; margin-bottom: 4px; }
-    .album-url {
-      flex: 1; font-size: 12px; color: #1565c0; font-family: monospace;
-      padding: 8px; border: 1px solid #a5d6a7; border-radius: 4px;
-      background: #f0fff4; word-break: break-all;
-      resize: none; min-height: 38px;
+    /* リンク結果 */
+    #link-results { margin-bottom: 4px; }
+    .link-result-block { border: 1px solid #ddd; border-radius: 8px; padding: 10px 12px; margin-bottom: 8px; }
+    .link-result-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+    .link-mode-name { font-size: 15px; font-weight: bold; }
+    .link-status    { font-size: 13px; }
+    .link-status.ok  { color: #1a5c2a; }
+    .link-status.err { color: #c0392b; }
+    .link-url-wrap { display: flex; gap: 8px; align-items: stretch; margin-bottom: 6px; }
+    .link-url {
+      flex: 1; font-size: 11px; color: #1565c0; font-family: monospace;
+      padding: 6px 8px; border: 1px solid #a5d6a7; border-radius: 4px;
+      background: #f0fff4; resize: none; min-height: 36px; word-break: break-all;
     }
     .copy-btn {
       font-size: 13px; font-weight: bold; white-space: nowrap;
-      padding: 8px 14px; background: #1e8e3e; color: #fff;
+      padding: 8px 12px; background: #1e8e3e; color: #fff;
       border: none; border-radius: 4px; cursor: pointer; -webkit-appearance: none;
     }
     .copy-btn:active { background: #1a5c2a; }
+    .retry-btn {
+      display: block; width: 100%; font-size: 14px; font-weight: bold;
+      padding: 10px; background: #e65100; color: #fff;
+      border: none; border-radius: 6px; cursor: pointer; -webkit-appearance: none;
+    }
+    .retry-btn:active { background: #bf360c; }
 
-    /* 区切り線 */
-    .asr-divider { border: none; border-top: 1px solid #ddd; margin: 16px 0; }
+    /* スプレッドシート反映ボタン */
+    #sheet-btn {
+      display: none; width: 100%; font-size: 18px; font-weight: bold;
+      padding: 18px; margin: 0 0 8px;
+      background: #1e8e3e; color: #fff;
+      border: none; border-radius: 8px;
+      cursor: pointer; -webkit-appearance: none;
+    }
+    #sheet-btn.visible { display: block; }
+    #sheet-btn:active   { background: #1a5c2a; }
+    #sheet-btn:disabled { background: #90a4ae; cursor: not-allowed; }
   </style>
 </head>
 <body>
 
 <h1>ASR カメラ</h1>
-
 <div id="gps-status">📍 GPS: 取得中...</div>
 
-<!-- ── 現場情報 ── -->
+<!-- 現場情報 -->
 <h2>現場情報</h2>
 <label for="site-name">現場名
-  <span style="font-weight:normal;font-size:12px;color:#888;">（Driveフォルダ名になります）</span>
+  <span style="font-weight:normal;font-size:12px;color:#888;">（Driveフォルダ名）</span>
 </label>
 <input type="text" id="site-name" placeholder="例：○○太陽光発電所">
 
-<!-- ── モード選択 ── -->
+<!-- モード選択 -->
 <h2>モード選択</h2>
 <div class="mode-btns">
   <button class="mode-btn active" id="btn-before" type="button" onclick="setMode('作業前')">作業前</button>
   <button class="mode-btn"        id="btn-after"  type="button" onclick="setMode('作業後')">作業後</button>
   <button class="mode-btn"        id="btn-check"  type="button" onclick="setMode('点検')">点検</button>
 </div>
-<div class="count-row">
-  <span class="count-badge" id="cnt-before" style="background:#dce8ff;color:#1565c0;">作業前: 0枚</span>
-  <span class="count-badge" id="cnt-after"  style="background:#fff3e0;color:#e65100;">作業後: 0枚</span>
-  <span class="count-badge" id="cnt-check"  style="background:#f3e5f5;color:#6a1b9a;">点検: 0枚</span>
-</div>
-
-<!-- ── 写真選択（複数枚・カメラロールから） ── -->
 <input type="file" id="cam-input" accept="image/*" multiple style="display:none"
        onchange="onFileSelect(this)">
 <button id="select-btn" class="select-btn" type="button"
         onclick="document.getElementById('cam-input').click()">
-  📂 写真を選択（<span id="current-mode-label">作業前</span>・複数可）
+  📂 写真を選択（<span id="mode-label">作業前</span>・複数可）
 </button>
 
-<!-- ── 選択済み写真 ── -->
-<h2>選択済み写真</h2>
-<div id="photo-grid" class="photo-grid">
-  <p class="no-photo" id="no-photo-msg">まだ写真がありません</p>
+<!-- カテゴリ別写真管理 -->
+<h2>カテゴリ別写真管理</h2>
+<div id="cats">
+  <div class="cat-block" data-mode="作業前">
+    <div class="cat-header">
+      <span>作業前</span><span class="cat-count" id="cnt-before">0枚</span>
+    </div>
+    <div class="cat-grid" id="grid-before"><p class="cat-empty">写真なし</p></div>
+  </div>
+  <div class="cat-block" data-mode="作業後">
+    <div class="cat-header">
+      <span>作業後</span><span class="cat-count" id="cnt-after">0枚</span>
+    </div>
+    <div class="cat-grid" id="grid-after"><p class="cat-empty">写真なし</p></div>
+  </div>
+  <div class="cat-block" data-mode="点検">
+    <div class="cat-header">
+      <span>点検</span><span class="cat-count" id="cnt-check">0枚</span>
+    </div>
+    <div class="cat-grid" id="grid-check"><p class="cat-empty">写真なし</p></div>
+  </div>
 </div>
 
-<!-- ── 反映ボタン ── -->
-<h2>反映・記録</h2>
-<button class="apply-btn" id="apply-btn" type="button" onclick="applyAll()">
-  ✅ 反映（Drive保存 ＋ シート記録）
+<!-- リンク発行 -->
+<h2>リンク発行</h2>
+<div id="issue-msg" class="msg"></div>
+<button id="issue-btn" class="issue-btn" type="button" onclick="issueLinks()">
+  🔗 リンク発行（Driveにアップロード）
 </button>
 <div id="progress-area">
-  <span id="progress-text">処理中...</span>
+  <span id="progress-text">0 / 0 枚完了</span>
   <div id="progress-bar-outer"><div id="progress-bar"></div></div>
 </div>
-<div id="apply-msg"></div>
+<div id="link-results"></div>
 
-<!-- ── ASR 代表写真・アルバムリンク（反映後に表示） ── -->
-<div id="asr-section">
-  <h2>ASR 代表写真・アルバムリンク</h2>
-
-  <!-- 作業前 -->
-  <div id="asr-before" class="asr-mode-block" data-mode="作業前" style="display:none">
-    <div class="asr-mode-header">
-      <span class="asr-mode-title" style="color:#1565c0;">■ 作業前</span>
-      <span class="asr-mode-count"></span>
-    </div>
-    <div class="rep-grid"></div>
-    <div class="album-url-label">📁 アルバムURL</div>
-    <div class="album-url-row">
-      <textarea class="album-url" readonly rows="2"></textarea>
-      <button class="copy-btn" type="button" onclick="copyLink(this)">コピー</button>
-    </div>
-  </div>
-
-  <hr class="asr-divider" id="div-after" style="display:none">
-
-  <!-- 作業後 -->
-  <div id="asr-after" class="asr-mode-block" data-mode="作業後" style="display:none">
-    <div class="asr-mode-header">
-      <span class="asr-mode-title" style="color:#e65100;">■ 作業後</span>
-      <span class="asr-mode-count"></span>
-    </div>
-    <div class="rep-grid"></div>
-    <div class="album-url-label">📁 アルバムURL</div>
-    <div class="album-url-row">
-      <textarea class="album-url" readonly rows="2"></textarea>
-      <button class="copy-btn" type="button" onclick="copyLink(this)">コピー</button>
-    </div>
-  </div>
-
-  <hr class="asr-divider" id="div-check" style="display:none">
-
-  <!-- 点検 -->
-  <div id="asr-check" class="asr-mode-block" data-mode="点検" style="display:none">
-    <div class="asr-mode-header">
-      <span class="asr-mode-title" style="color:#6a1b9a;">■ 点検</span>
-      <span class="asr-mode-count"></span>
-    </div>
-    <div class="rep-grid"></div>
-    <div class="album-url-label">📁 アルバムURL</div>
-    <div class="album-url-row">
-      <textarea class="album-url" readonly rows="2"></textarea>
-      <button class="copy-btn" type="button" onclick="copyLink(this)">コピー</button>
-    </div>
-  </div>
-</div>
+<!-- スプレッドシート反映 -->
+<h2>スプレッドシート反映</h2>
+<button id="sheet-btn" type="button" onclick="sendToSheet()">
+  📊 スプレッドシートに反映
+</button>
+<div id="sheet-msg" class="msg"></div>
 
 <script>
-/* ======================================================
+/* ================================================================
    設定
-   ====================================================== */
+   ================================================================ */
 var GAS_URL = 'https://script.google.com/macros/s/AKfycbxtnLLUlzeMgubyjW4fY9g2Cf2O2yS_P_p1mSOyaXlYUyrul1xm_tDCXVrl-PB3fqYw/exec';
 
-/* ======================================================
-   状態変数
-   ====================================================== */
-var currentMode     = '作業前';
-var photos          = [];   /* {id, mode, datetime, dateObj, gps, src, file, uploaded} */
-var photoId         = 0;
-var gpsCoords       = null; /* watchPosition で更新 */
-var modeFolderLinks = { '作業前': null, '作業後': null, '点検': null };
+/* ================================================================
+   状態
+   ================================================================ */
+var currentMode    = '作業前';
+var photoDB        = { '作業前': [], '作業後': [], '点検': [] };
+var categoryLinks  = { '作業前': null, '作業後': null, '点検': null };
+var categoryFailed = { '作業前': 0,    '作業後': 0,    '点検': 0    };
+var photoId        = 0;
+var gpsCoords      = null;
+var _upTotal = 0, _upDone = 0, _upFail = 0;
 
 var MODE_CFG = {
-  '作業前': { btnId: 'btn-before', cntId: 'cnt-before', bg: '#1565c0', blockId: 'asr-before', divId: null      },
-  '作業後': { btnId: 'btn-after',  cntId: 'cnt-after',  bg: '#e65100', blockId: 'asr-after',  divId: 'div-after' },
-  '点検':   { btnId: 'btn-check',  cntId: 'cnt-check',  bg: '#6a1b9a', blockId: 'asr-check',  divId: 'div-check' }
+  '作業前': { id: 'before', color: '#1565c0' },
+  '作業後': { id: 'after',  color: '#e65100' },
+  '点検':   { id: 'check',  color: '#6a1b9a' }
 };
+var MODES = ['作業前', '作業後', '点検'];
 
-/* ======================================================
-   GPS: watchPosition で常時更新（許可は初回のみ）
-   ====================================================== */
+/* ================================================================
+   GPS（起動時に1回許可を求め、watchPosition で自動更新）
+   ================================================================ */
 function initGPS() {
   var el = document.getElementById('gps-status');
   if (!navigator.geolocation) {
@@ -319,45 +274,40 @@ function initGPS() {
       el.className   = 'ok';
     },
     function() {
-      el.textContent = '📍 GPS: 取得失敗（設定 → 位置情報を許可してください）';
+      el.textContent = '📍 GPS: 取得失敗（設定→位置情報を許可してください）';
       el.className   = 'err';
     },
     { enableHighAccuracy: true, timeout: 15000, maximumAge: 30000 }
   );
 }
 
-/* ======================================================
+/* ================================================================
    モード切り替え
-   ====================================================== */
+   ================================================================ */
 function setMode(mode) {
   currentMode = mode;
-  document.getElementById('current-mode-label').textContent = mode;
-  Object.keys(MODE_CFG).forEach(function(m) {
-    document.getElementById(MODE_CFG[m].btnId).classList.toggle('active', m === mode);
+  document.getElementById('mode-label').textContent = mode;
+  MODES.forEach(function(m) {
+    document.getElementById('btn-' + MODE_CFG[m].id).classList.toggle('active', m === mode);
   });
 }
 
-/* ======================================================
-   写真選択（複数枚）
-   - exifr で撮影日時・GPS を一括取得
-   - EXIFにGPSがない場合は現在地を使用
-   - 全枚数にモードを一括タグ付け
-   ====================================================== */
+/* ================================================================
+   写真選択（複数枚・カメラロール）
+   EXIFで撮影日時・GPS取得 → EXIFにGPSがなければ現在地を使用
+   ================================================================ */
 async function onFileSelect(input) {
   var files = Array.from(input.files || []);
   if (!files.length) return;
 
-  var mode    = currentMode;
-  var btn     = document.getElementById('select-btn');
-  var noMsg   = document.getElementById('no-photo-msg');
+  var mode = currentMode;
+  var btn  = document.getElementById('select-btn');
   btn.disabled    = true;
   btn.textContent = '📂 読み込み中 (0/' + files.length + ')...';
 
-  var done    = 0;
-  var results = [];
-
+  var done = 0;
+  var results;
   try {
-    /* 並列でEXIF読み取り（GPSと撮影日時） */
     results = await Promise.all(files.map(async function(file) {
       var item = await extractFileData(file, mode);
       done++;
@@ -366,200 +316,223 @@ async function onFileSelect(input) {
     }));
   } catch (e) {
     console.error('File processing error:', e);
+    results = [];
   }
 
-  /* 選択順にフォトリストへ追加・描画 */
-  var fragment = document.createDocumentFragment();
+  var cfg      = MODE_CFG[mode];
+  var grid     = document.getElementById('grid-' + cfg.id);
+  var emptyMsg = grid.querySelector('.cat-empty');
+  if (emptyMsg) emptyMsg.remove();
+
+  var frag = document.createDocumentFragment();
   results.forEach(function(r) {
     if (!r) return;
-    photos.push(r);
-    fragment.appendChild(buildPhotoItem(r));
+    photoDB[mode].push(r);
+    frag.appendChild(buildThumb(r));
   });
-  document.getElementById('photo-grid').appendChild(fragment);
-  if (results.length && noMsg) noMsg.style.display = 'none';
-  updateCounts();
+  grid.appendChild(frag);
+  updateCategoryCount(mode);
 
   btn.disabled    = false;
   btn.textContent = '📂 写真を選択（' + mode + '・複数可）';
   input.value     = '';
 }
 
-/* ======================================================
-   1ファイルのデータ抽出
-   ====================================================== */
+/* 1ファイルのEXIFデータ抽出 */
 async function extractFileData(file, mode) {
-  var now      = new Date();
-  var datetime = null;
-  var dateObj  = null;
-  var gps      = null;
-
+  var now = new Date(), datetime = null, dateObj = null, gps = null;
   try {
     if (typeof exifr !== 'undefined') {
-      var results = await Promise.all([
+      var arr = await Promise.all([
         exifr.gps(file).catch(function() { return null; }),
         exifr.parse(file, { pick: ['DateTimeOriginal'] }).catch(function() { return null; })
       ]);
-      var exifGps  = results[0];
-      var exifTags = results[1];
-
+      var exifGps  = arr[0];
+      var exifTags = arr[1];
       if (exifTags && exifTags.DateTimeOriginal) {
         dateObj  = new Date(exifTags.DateTimeOriginal);
         datetime = formatDatetime(dateObj);
       }
-      if (exifGps && exifGps.latitude != null && exifGps.longitude != null) {
+      if (exifGps && exifGps.latitude != null) {
         gps = { lat: exifGps.latitude.toFixed(6), lng: exifGps.longitude.toFixed(6), src: 'EXIF' };
       }
     }
-  } catch (e) { /* EXIF失敗は無視 */ }
+  } catch (e) {}
 
-  if (!dateObj)  { dateObj = now; }
+  if (!dateObj)  { dateObj  = now; }
   if (!datetime) { datetime = formatDatetime(now); }
   if (!gps && gpsCoords) {
-    gps = { lat: gpsCoords.lat, lng: gpsCoords.lng, acc: gpsCoords.acc, src: '現在地' };
+    gps = { lat: gpsCoords.lat, lng: gpsCoords.lng, src: '現在地' };
   }
 
-  var id  = ++photoId;
-  var src = URL.createObjectURL(file);
-  return { id: id, mode: mode, datetime: datetime, dateObj: dateObj, gps: gps, src: src, file: file, uploaded: false };
+  return {
+    id: ++photoId, mode: mode, file: file,
+    src: URL.createObjectURL(file),
+    datetime: datetime, dateObj: dateObj, gps: gps,
+    uploaded: false
+  };
 }
 
-/* ======================================================
+/* ================================================================
    サムネイル DOM 生成
-   ====================================================== */
-function buildPhotoItem(p) {
-  var item = document.createElement('div');
-  item.className = 'photo-item';
-  item.id = 'photo-' + p.id;
+   ================================================================ */
+function buildThumb(p) {
+  var wrap = document.createElement('div');
+  wrap.className = 'thumb-item';
+  wrap.id        = 'thumb-' + p.id;
 
   var img = document.createElement('img');
   img.src     = p.src;
   img.loading = 'lazy';
   img.onclick = (function(s) { return function() { window.open(s, '_blank'); }; })(p.src);
 
-  var status = document.createElement('div');
-  status.id        = 'photo-status-' + p.id;
-  status.className = 'photo-status pending';
-  status.textContent = '未送信';
-
-  var cfg     = MODE_CFG[p.mode] || { bg: '#333' };
-  var gpsLine = p.gps ? ('<br>📍' + p.gps.lat + ',' + p.gps.lng) : '';
-  var meta    = document.createElement('div');
-  meta.className = 'photo-meta';
-  meta.innerHTML =
-    '<span class="photo-mode-badge" style="background:' + cfg.bg + ';">' + p.mode + '</span><br>' +
-    p.datetime + gpsLine;
+  var meta = document.createElement('div');
+  meta.className   = 'thumb-meta';
+  meta.textContent = p.datetime;
+  if (p.gps) {
+    meta.appendChild(document.createElement('br'));
+    meta.appendChild(document.createTextNode('📍' + p.gps.lat + ',' + p.gps.lng));
+  }
 
   var del = document.createElement('button');
-  del.className   = 'photo-del';
+  del.className   = 'thumb-del';
   del.type        = 'button';
   del.textContent = '×';
-  del.onclick = (function(xid) { return function() { removePhoto(xid); }; })(p.id);
+  del.onclick = (function(mode, id) {
+    return function() { removePhoto(mode, id); };
+  })(p.mode, p.id);
 
-  item.appendChild(img);
-  item.appendChild(status);
-  item.appendChild(meta);
-  item.appendChild(del);
-  return item;
+  wrap.appendChild(img);
+  wrap.appendChild(meta);
+  wrap.appendChild(del);
+  return wrap;
 }
 
-function showStatus(id, cls, text) {
-  var el = document.getElementById('photo-status-' + id);
-  if (!el) return;
-  el.className   = 'photo-status ' + cls;
-  el.textContent = text;
-}
-
-function removePhoto(id) {
-  photos = photos.filter(function(p) { return p.id !== id; });
-  var el = document.getElementById('photo-' + id);
+function removePhoto(mode, id) {
+  photoDB[mode] = photoDB[mode].filter(function(p) { return p.id !== id; });
+  var el = document.getElementById('thumb-' + id);
   if (el) el.remove();
-  updateCounts();
-  if (!photos.length) {
-    var noMsg = document.getElementById('no-photo-msg');
-    if (noMsg) noMsg.style.display = '';
+  updateCategoryCount(mode);
+  var grid = document.getElementById('grid-' + MODE_CFG[mode].id);
+  if (grid && !photoDB[mode].length) {
+    var msg = document.createElement('p');
+    msg.className   = 'cat-empty';
+    msg.textContent = '写真なし';
+    grid.appendChild(msg);
   }
 }
 
-function updateCounts() {
-  var counts = { '作業前': 0, '作業後': 0, '点検': 0 };
-  photos.forEach(function(p) { if (p.mode in counts) counts[p.mode]++; });
-  document.getElementById('cnt-before').textContent = '作業前: ' + counts['作業前'] + '枚';
-  document.getElementById('cnt-after').textContent  = '作業後: ' + counts['作業後'] + '枚';
-  document.getElementById('cnt-check').textContent  = '点検: '   + counts['点検']   + '枚';
+function updateCategoryCount(mode) {
+  var el = document.getElementById('cnt-' + MODE_CFG[mode].id);
+  if (el) el.textContent = photoDB[mode].length + '枚';
 }
 
-/* ======================================================
-   「反映」: アップロード → 代表5枚表示 → シート記録
-   失敗した写真のみ再実行可能
-   ====================================================== */
-async function applyAll() {
-  var btn     = document.getElementById('apply-btn');
-  var progEl  = document.getElementById('progress-area');
-  var progTxt = document.getElementById('progress-text');
-  var progBar = document.getElementById('progress-bar');
-
-  document.getElementById('apply-msg').style.display = 'none';
-
-  if (!photos.length)                             { showMsg('写真がありません', 'err'); return; }
-  if (!document.getElementById('site-name').value.trim()) { showMsg('現場名を入力してください', 'err'); return; }
+/* ================================================================
+   リンク発行（カテゴリ別に順次アップロード）
+   ================================================================ */
+async function issueLinks() {
+  clearMsg('issue-msg');
+  var total = MODES.reduce(function(s, m) { return s + photoDB[m].length; }, 0);
+  if (!total) { showMsg('issue-msg', '写真がありません', 'err'); return; }
 
   var siteName = document.getElementById('site-name').value.trim();
-  var pending  = photos.filter(function(p) { return !p.uploaded; });
+  if (!siteName) { showMsg('issue-msg', '現場名を入力してください', 'err'); return; }
 
-  if (!pending.length) {
-    showMsg('未送信の写真はありません（すでに反映済み）', 'ok');
-    renderASR();
+  var pending = MODES.reduce(function(s, m) {
+    return s + photoDB[m].filter(function(p) { return !p.uploaded; }).length;
+  }, 0);
+
+  if (!pending) {
+    renderLinkResults();
+    checkSheetBtn();
+    showMsg('issue-msg', 'すべてアップロード済みです', 'ok');
     return;
   }
 
-  btn.disabled        = true;
-  progEl.style.display = '';
-  progBar.style.width  = '0';
+  _upTotal = pending; _upDone = 0; _upFail = 0;
 
-  var done = 0, failCount = 0;
+  var btn  = document.getElementById('issue-btn');
+  var prog = document.getElementById('progress-area');
+  btn.disabled       = true;
+  prog.style.display = '';
+  updateProgressUI();
 
-  for (var i = 0; i < pending.length; i++) {
-    var photo = pending[i];
-    progTxt.textContent = done + ' / ' + pending.length + ' 枚完了';
-    progBar.style.width  = Math.round((done / pending.length) * 100) + '%';
-    showStatus(photo.id, 'uploading', '⬆ 送信中');
-
-    try {
-      var link = await uploadOnePhoto(photo, siteName);
-      photo.uploaded = true;
-      if (link) modeFolderLinks[photo.mode] = link;
-      done++;
-      showStatus(photo.id, 'done', '✅ 完了');
-    } catch (err) {
-      failCount++;
-      showStatus(photo.id, 'error', '❌ 失敗');
-      console.error('Upload failed photo=' + photo.id, err);
-    }
+  for (var i = 0; i < MODES.length; i++) {
+    var mode = MODES[i];
+    var modePending = photoDB[mode].filter(function(p) { return !p.uploaded; });
+    if (!modePending.length) continue;
+    await uploadCategory(mode, siteName);
   }
 
-  progTxt.textContent = done + ' / ' + pending.length + ' 枚完了';
-  progBar.style.width  = '100%';
+  prog.style.display = 'none';
+  btn.disabled       = false;
+  renderLinkResults();
+  checkSheetBtn();
 
-  /* スプレッドシート記録 */
-  progTxt.textContent = 'スプレッドシートに記録中...';
-  try { await sendToSheetAsync(siteName); } catch (e) { console.warn('Sheet send failed:', e); }
-
-  progEl.style.display = 'none';
-  btn.disabled         = false;
-
-  renderASR();
-
-  if (!failCount) {
-    showMsg('✅ ' + done + '枚をDriveに保存し、シートに記録しました！', 'ok');
+  var totalFails = MODES.reduce(function(s, m) { return s + categoryFailed[m]; }, 0);
+  if (!totalFails) {
+    showMsg('issue-msg', '✅ アップロード完了！', 'ok');
   } else {
-    showMsg('⚠ ' + failCount + '枚の送信に失敗しました。再度「反映」を押してリトライできます。', 'err');
+    showMsg('issue-msg', '⚠ ' + totalFails + '枚失敗。各カテゴリの「再試行」で再送できます。', 'err');
   }
 }
 
-/* ======================================================
-   写真1枚を圧縮して GAS にアップロード
-   モードフォルダの共有URLを返す
-   ====================================================== */
+/* ================================================================
+   カテゴリ単位アップロード
+   ================================================================ */
+async function uploadCategory(mode, siteName) {
+  var pending  = photoDB[mode].filter(function(p) { return !p.uploaded; });
+  var modeLink = categoryLinks[mode];
+  var modeFail = 0;
+
+  for (var i = 0; i < pending.length; i++) {
+    var photo = pending[i];
+    try {
+      var link = await uploadOnePhoto(photo, siteName);
+      photo.uploaded = true;
+      if (link) modeLink = link;
+      _upDone++;
+    } catch (err) {
+      modeFail++;
+      _upFail++;
+      console.error('Upload error photo=' + photo.id, err);
+    }
+    updateProgressUI();
+  }
+
+  if (modeLink) categoryLinks[mode] = modeLink;
+  categoryFailed[mode] = modeFail;
+}
+
+/* ================================================================
+   カテゴリ単位リトライ
+   ================================================================ */
+async function retryCategory(mode) {
+  var siteName = document.getElementById('site-name').value.trim();
+  if (!siteName) { showMsg('issue-msg', '現場名を入力してください', 'err'); return; }
+
+  var pending = photoDB[mode].filter(function(p) { return !p.uploaded; });
+  if (!pending.length) { renderLinkResults(); return; }
+
+  _upTotal = pending.length; _upDone = 0; _upFail = 0;
+
+  var btn  = document.getElementById('issue-btn');
+  var prog = document.getElementById('progress-area');
+  btn.disabled       = true;
+  prog.style.display = '';
+  updateProgressUI();
+
+  await uploadCategory(mode, siteName);
+
+  prog.style.display = 'none';
+  btn.disabled       = false;
+  renderLinkResults();
+  checkSheetBtn();
+}
+
+/* ================================================================
+   写真1枚をGASにPOST → カテゴリフォルダの共有URLを返す
+   ================================================================ */
 function uploadOnePhoto(photo, siteName) {
   return new Promise(function(resolve, reject) {
     compressImage(photo.file, function(blob) {
@@ -585,10 +558,8 @@ function uploadOnePhoto(photo, siteName) {
         var timer = setTimeout(function() { ctrl.abort(); }, 90000);
 
         fetch(GAS_URL, {
-          method:  'POST',
-          headers: { 'Content-Type': 'text/plain' },
-          body:    payload,
-          signal:  ctrl.signal
+          method: 'POST', headers: { 'Content-Type': 'text/plain' },
+          body: payload, signal: ctrl.signal
         })
         .then(function(r) {
           clearTimeout(timer);
@@ -607,176 +578,182 @@ function uploadOnePhoto(photo, siteName) {
   });
 }
 
-/* ======================================================
-   スプレッドシートにカテゴリ別3行を送信
-   行: カテゴリ名 | アルバムURL
-   ====================================================== */
-function sendToSheetAsync(siteName) {
-  return new Promise(function(resolve, reject) {
-    var counts = { '作業前': 0, '作業後': 0, '点検': 0 };
-    photos.forEach(function(p) { if (p.mode in counts) counts[p.mode]++; });
-
-    var modes = ['作業前', '作業後', '点検']
-      .map(function(name) {
-        return { name: name, count: counts[name], url: modeFolderLinks[name] || '' };
-      })
-      .filter(function(m) { return m.count > 0; });
-
-    var payload = JSON.stringify({
-      type:     'camera_asr',
-      siteName: siteName,
-      date:     formatDate(new Date()),
-      modes:    modes
-    });
-
-    var ctrl  = new AbortController();
-    var timer = setTimeout(function() { ctrl.abort(); }, 15000);
-
-    fetch(GAS_URL, {
-      method:  'POST',
-      mode:    'no-cors',
-      headers: { 'Content-Type': 'text/plain' },
-      body:    payload,
-      signal:  ctrl.signal
-    })
-    .then(function() { clearTimeout(timer); resolve(); })
-    .catch(function(err) { clearTimeout(timer); reject(err); });
-  });
+/* ================================================================
+   プログレスUI
+   ================================================================ */
+function updateProgressUI() {
+  document.getElementById('progress-text').textContent =
+    _upDone + ' / ' + _upTotal + ' 枚完了' + (_upFail ? '（' + _upFail + '枚失敗）' : '');
+  document.getElementById('progress-bar').style.width =
+    (_upTotal ? Math.round(_upDone / _upTotal * 100) : 0) + '%';
 }
 
-/* ======================================================
-   ASR セクションを描画（反映後に呼び出し）
-   各モードの代表5枚 + アルバムURL を表示
-   ====================================================== */
-function renderASR() {
-  var anyVisible = false;
+/* ================================================================
+   リンク結果を描画
+   ================================================================ */
+function renderLinkResults() {
+  var container = document.getElementById('link-results');
+  container.innerHTML = '';
 
-  ['作業前', '作業後', '点検'].forEach(function(mode) {
-    var cfg        = MODE_CFG[mode];
-    var block      = document.getElementById(cfg.blockId);
-    var modePhotos = photos.filter(function(p) { return p.mode === mode; });
-    var link       = modeFolderLinks[mode];
+  MODES.forEach(function(mode) {
+    if (!photoDB[mode].length) return;
 
-    if (!modePhotos.length && !link) {
-      block.style.display = 'none';
-      if (cfg.divId) document.getElementById(cfg.divId).style.display = 'none';
-      return;
-    }
+    var cfg      = MODE_CFG[mode];
+    var link     = categoryLinks[mode];
+    var failed   = categoryFailed[mode];
+    var uploaded = photoDB[mode].filter(function(p) { return p.uploaded; }).length;
 
-    /* 枚数ラベル */
-    block.querySelector('.asr-mode-count').textContent = '（' + modePhotos.length + '枚）';
+    var block = document.createElement('div');
+    block.className = 'link-result-block';
 
-    /* 代表5枚グリッド（時系列均等抽出） */
-    var grid = block.querySelector('.rep-grid');
-    grid.innerHTML = '';
-    pickRepresentative(modePhotos).forEach(function(p) {
-      var item = document.createElement('div');
-      item.className = 'rep-item';
-      var img = document.createElement('img');
-      img.src     = p.src;
-      img.loading = 'lazy';
-      img.onclick = (function(s) { return function() { window.open(s, '_blank'); }; })(p.src);
-      var meta = document.createElement('div');
-      meta.className = 'photo-meta';
-      meta.innerHTML = '<span class="photo-mode-badge" style="background:' + cfg.bg + ';">' + mode + '</span><br>' + p.datetime;
-      item.appendChild(img);
-      item.appendChild(meta);
-      grid.appendChild(item);
-    });
+    /* ヘッダー */
+    var hdr = document.createElement('div');
+    hdr.className = 'link-result-header';
+    var nameEl = document.createElement('span');
+    nameEl.className   = 'link-mode-name';
+    nameEl.style.color = cfg.color;
+    nameEl.textContent = '■ ' + mode;
+    var statusEl = document.createElement('span');
+    statusEl.className   = 'link-status ' + (failed ? 'err' : 'ok');
+    statusEl.textContent = failed ? '❌ ' + failed + '枚失敗' : '✅ ' + uploaded + '枚完了';
+    hdr.appendChild(nameEl);
+    hdr.appendChild(statusEl);
+    block.appendChild(hdr);
 
-    /* アルバムURL */
-    var row = block.querySelector('.album-url-row');
+    /* URLとコピー */
     if (link) {
-      block.querySelector('.album-url').value = link;
-      row.classList.add('visible');
-    } else {
-      row.classList.remove('visible');
+      var urlWrap = document.createElement('div');
+      urlWrap.className = 'link-url-wrap';
+      var ta = document.createElement('textarea');
+      ta.className = 'link-url'; ta.readOnly = true; ta.rows = 2; ta.value = link;
+      var copyBtn = document.createElement('button');
+      copyBtn.className   = 'copy-btn';
+      copyBtn.type        = 'button';
+      copyBtn.textContent = 'コピー';
+      copyBtn.onclick = (function(b) { return function() { copyLinkBtn(b); }; })(copyBtn);
+      urlWrap.appendChild(ta);
+      urlWrap.appendChild(copyBtn);
+      block.appendChild(urlWrap);
     }
 
-    block.style.display = '';
-    if (cfg.divId && anyVisible) document.getElementById(cfg.divId).style.display = '';
-    anyVisible = true;
-  });
+    /* 再試行ボタン */
+    if (failed) {
+      var retryBtn = document.createElement('button');
+      retryBtn.className   = 'retry-btn';
+      retryBtn.type        = 'button';
+      retryBtn.textContent = '🔄 再試行（' + failed + '枚）';
+      retryBtn.onclick = (function(m) { return function() { retryCategory(m); }; })(mode);
+      block.appendChild(retryBtn);
+    }
 
-  var sec = document.getElementById('asr-section');
-  sec.style.display = anyVisible ? '' : 'none';
-  if (anyVisible) setTimeout(function() { sec.scrollIntoView({ behavior: 'smooth' }); }, 120);
+    container.appendChild(block);
+  });
 }
 
-/* ======================================================
-   代表写真5枚を時系列で均等抽出
-   ====================================================== */
-function pickRepresentative(modePhotos) {
-  if (modePhotos.length <= 5) return modePhotos.slice();
+function checkSheetBtn() {
+  var hasLink = MODES.some(function(m) { return categoryLinks[m]; });
+  var btn = document.getElementById('sheet-btn');
+  if (hasLink) btn.classList.add('visible');
+  else         btn.classList.remove('visible');
+}
 
-  /* 撮影日時昇順にソート */
-  var sorted = modePhotos.slice().sort(function(a, b) {
-    return (a.dateObj ? a.dateObj.getTime() : 0) - (b.dateObj ? b.dateObj.getTime() : 0);
-  });
+/* ================================================================
+   スプレッドシートに反映
+   カテゴリ名とURLのみを送信
+   ================================================================ */
+async function sendToSheet() {
+  var btn      = document.getElementById('sheet-btn');
+  var siteName = document.getElementById('site-name').value.trim();
+  clearMsg('sheet-msg');
+  btn.disabled = true;
 
-  var result = [];
-  var step   = (sorted.length - 1) / 4;
-  for (var i = 0; i < 5; i++) {
-    result.push(sorted[Math.round(i * step)]);
+  var modes = MODES
+    .filter(function(m) { return categoryLinks[m]; })
+    .map(function(m) { return { name: m, url: categoryLinks[m] }; });
+
+  if (!modes.length) {
+    showMsg('sheet-msg', 'アルバムURLがありません。先にリンクを発行してください。', 'err');
+    btn.disabled = false;
+    return;
   }
-  return result;
+
+  var payload = JSON.stringify({
+    type:     'camera_asr',
+    siteName: siteName,
+    date:     formatDate(new Date()),
+    modes:    modes
+  });
+
+  var ctrl  = new AbortController();
+  var timer = setTimeout(function() { ctrl.abort(); }, 15000);
+
+  try {
+    await fetch(GAS_URL, {
+      method: 'POST', mode: 'no-cors',
+      headers: { 'Content-Type': 'text/plain' },
+      body: payload, signal: ctrl.signal
+    });
+    clearTimeout(timer);
+    showMsg('sheet-msg', '✅ スプレッドシートに記録しました！', 'ok');
+  } catch (err) {
+    clearTimeout(timer);
+    showMsg('sheet-msg', '❌ 送信に失敗しました（ネットワークを確認してください）', 'err');
+  }
+
+  btn.disabled = false;
 }
 
-/* ======================================================
-   アルバムURLをクリップボードにコピー
-   ====================================================== */
-function copyLink(btnEl) {
-  var ta   = btnEl.parentElement.querySelector('.album-url');
+/* ================================================================
+   コピーボタン
+   ================================================================ */
+function copyLinkBtn(btnEl) {
+  var ta   = btnEl.parentElement.querySelector('.link-url');
   var text = ta ? ta.value : '';
   if (!text) return;
-
   if (navigator.clipboard) {
-    navigator.clipboard.writeText(text)
-      .then(function() {
-        var orig = btnEl.textContent;
-        btnEl.textContent = '完了!';
-        setTimeout(function() { btnEl.textContent = orig; }, 1500);
-      })
-      .catch(function() { fallbackCopy(ta); });
+    navigator.clipboard.writeText(text).then(function() {
+      var orig = btnEl.textContent;
+      btnEl.textContent = '完了!';
+      setTimeout(function() { btnEl.textContent = orig; }, 1500);
+    }).catch(function() { fallbackCopy(ta); });
   } else {
     fallbackCopy(ta);
   }
 }
-
 function fallbackCopy(ta) {
-  ta.select();
-  ta.setSelectionRange(0, 99999);
+  ta.select(); ta.setSelectionRange(0, 99999);
   try { document.execCommand('copy'); alert('コピーしました'); }
   catch (e) { alert('手動でコピーしてください'); }
 }
 
-/* ======================================================
-   メッセージ表示
-   ====================================================== */
-function showMsg(text, cls) {
-  var el = document.getElementById('apply-msg');
-  el.textContent   = text;
-  el.className     = cls;
-  el.style.display = 'block';
+/* ================================================================
+   メッセージ
+   ================================================================ */
+function showMsg(elId, text, cls) {
+  var el = document.getElementById(elId);
+  el.textContent = text; el.className = 'msg ' + cls;
+}
+function clearMsg(elId) {
+  var el = document.getElementById(elId);
+  el.textContent = ''; el.className = 'msg';
 }
 
-/* ======================================================
-   写真圧縮（最大1920px・JPEG 0.75）
-   ====================================================== */
+/* ================================================================
+   画像圧縮（最大1920px・JPEG 0.75）
+   ================================================================ */
 function compressImage(file, callback) {
   var reader = new FileReader();
   reader.onload = function(e) {
     var img = new Image();
     img.onload = function() {
-      var MAX    = 1920;
-      var scale  = Math.min(1, MAX / Math.max(img.naturalWidth, img.naturalHeight));
-      var w      = Math.round(img.naturalWidth  * scale);
-      var h      = Math.round(img.naturalHeight * scale);
-      var canvas = document.createElement('canvas');
-      canvas.width  = w;
-      canvas.height = h;
-      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-      canvas.toBlob(function(blob) { callback(blob); }, 'image/jpeg', 0.75);
+      var MAX   = 1920;
+      var scale = Math.min(1, MAX / Math.max(img.naturalWidth, img.naturalHeight));
+      var w     = Math.round(img.naturalWidth * scale);
+      var h     = Math.round(img.naturalHeight * scale);
+      var c     = document.createElement('canvas');
+      c.width   = w; c.height = h;
+      c.getContext('2d').drawImage(img, 0, 0, w, h);
+      c.toBlob(function(blob) { callback(blob); }, 'image/jpeg', 0.75);
     };
     img.onerror = function() { callback(file); };
     img.src = e.target.result;
@@ -785,25 +762,20 @@ function compressImage(file, callback) {
   reader.readAsDataURL(file);
 }
 
-/* ======================================================
-   日付・時刻フォーマット
-   ====================================================== */
+/* ================================================================
+   日付フォーマット
+   ================================================================ */
 function formatDate(d) {
-  return d.getFullYear() + '-' +
-    ('0' + (d.getMonth() + 1)).slice(-2) + '-' +
-    ('0' + d.getDate()).slice(-2);
+  return d.getFullYear() + '-' + ('0'+(d.getMonth()+1)).slice(-2) + '-' + ('0'+d.getDate()).slice(-2);
 }
 function formatDatetime(d) {
-  return d.getFullYear() + '年' + (d.getMonth() + 1) + '月' + d.getDate() + '日 ' +
-    ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2);
+  return d.getFullYear() + '年' + (d.getMonth()+1) + '月' + d.getDate() + '日 ' +
+    ('0'+d.getHours()).slice(-2) + ':' + ('0'+d.getMinutes()).slice(-2);
 }
 function formatDatetimeFile(d) {
-  return d.getFullYear() +
-    ('0' + (d.getMonth() + 1)).slice(-2) +
-    ('0' + d.getDate()).slice(-2) + '_' +
-    ('0' + d.getHours()).slice(-2) +
-    ('0' + d.getMinutes()).slice(-2) +
-    ('0' + d.getSeconds()).slice(-2);
+  d = d || new Date();
+  return d.getFullYear() + ('0'+(d.getMonth()+1)).slice(-2) + ('0'+d.getDate()).slice(-2) + '_' +
+    ('0'+d.getHours()).slice(-2) + ('0'+d.getMinutes()).slice(-2) + ('0'+d.getSeconds()).slice(-2);
 }
 
 /* 初期化 */

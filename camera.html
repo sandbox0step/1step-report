@@ -7,6 +7,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="ASRカメラ">
+  <script src="https://accounts.google.com/gsi/client" async></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; }
     body {
@@ -293,27 +294,68 @@
 /* ==============================================================
    設定
    ============================================================== */
+// STEP3 でスプレッドシートに書き込む GAS エンドポイント
 var GAS_URL = 'https://script.google.com/macros/s/AKfycbxtnLLUlzeMgubyjW4fY9g2Cf2O2yS_P_p1mSOyaXlYUyrul1xm_tDCXVrl-PB3fqYw/exec';
+
+// ★ Google Cloud Console で取得した OAuth2 クライアントID を設定してください
+// 手順: https://console.cloud.google.com/
+//   1. 「APIとサービス」→「認証情報」→「認証情報を作成」→「OAuthクライアントID」
+//   2. 種類: ウェブアプリケーション
+//   3. 承認済みのJavaScript生成元: https://sandbox0step.github.io
+//   4. 表示されたクライアントIDをここに貼り付ける
+var CLIENT_ID = 'YOUR_CLIENT_ID.apps.googleusercontent.com';
 
 /* ==============================================================
    状態変数
    ============================================================== */
 var currentMode   = '作業前';
 var photoDB       = { '作業前': [], '作業後': [], '点検': [] };
-/* photo = { id, mode, file, uploaded } */
 var categoryLinks = { '作業前': null, '作業後': null, '点検': null };
 var photoId       = 0;
-var photoSeq      = 0;   /* ファイル名用のシーケンス番号 */
+var photoSeq      = 0;
 var gpsCoords     = null;
 var _total        = 0;
 var _done         = 0;
+var tokenClient   = null;
+var accessToken   = null;
 
-var MODES = ['作業前', '作業後', '点検'];
+var MODES    = ['作業前', '作業後', '点検'];
 var MODE_CFG = {
   '作業前': { id: 'before', color: '#1565c0', cntId: 'cnt-before' },
   '作業後': { id: 'after',  color: '#e65100', cntId: 'cnt-after'  },
   '点検':   { id: 'check',  color: '#6a1b9a', cntId: 'cnt-check'  }
 };
+
+/* ==============================================================
+   Google Identity Services 初期化
+   ============================================================== */
+function initGoogleAuth() {
+  if (typeof google === 'undefined' || !google.accounts) {
+    setTimeout(initGoogleAuth, 200);
+    return;
+  }
+  tokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: CLIENT_ID,
+    scope: 'https://www.googleapis.com/auth/drive.file',
+    callback: ''  // getAccessToken() 内で都度セット
+  });
+}
+
+/* アクセストークン取得（同意済みなら再ポップアップなし） */
+function getAccessToken() {
+  return new Promise(function(resolve, reject) {
+    tokenClient.callback = function(response) {
+      if (response.error) {
+        reject(new Error('Google認証エラー: ' + response.error));
+        return;
+      }
+      accessToken = response.access_token;
+      resolve(accessToken);
+    };
+    // accessToken があれば prompt なしで再取得を試みる
+    tokenClient.requestAccessToken({ prompt: accessToken ? '' : 'consent' });
+  });
+}
 
 /* ==============================================================
    GPS（起動時に1回許可を求め、以降は自動更新）
@@ -352,18 +394,15 @@ function setMode(mode) {
 }
 
 /* ==============================================================
-   STEP 1：写真選択
-   ファイルをメモリに蓄積するだけ。アップロードしない。
+   STEP 1：写真選択（メモリ蓄積のみ・送信なし）
    ============================================================== */
 function onFileSelect(input) {
   var files = Array.from(input.files || []);
   if (!files.length) return;
-
   var mode = currentMode;
   files.forEach(function(file) {
-    photoDB[mode].push({ id: ++photoId, mode: mode, file: file, uploaded: false });
+    photoDB[mode].push({ id: ++photoId, mode: mode, file: file });
   });
-
   updateAllCounts();
   input.value = '';
 }
@@ -376,63 +415,57 @@ function clearCategory(mode) {
 
 function updateAllCounts() {
   MODES.forEach(function(m) {
-    var cfg = MODE_CFG[m];
-    document.getElementById(cfg.cntId).textContent = photoDB[m].length + ' 枚';
+    document.getElementById(MODE_CFG[m].cntId).textContent = photoDB[m].length + ' 枚';
   });
 }
 
 /* ==============================================================
-   STEP 2：ドライブに保存
-   - 全枚数のアップロードが完了してから結果を表示
-   - 1枚でも失敗したら即停止してエラー表示
-   - STEP3 ボックスは全完了後のみ表示
+   STEP 2：Google Drive API で一括アップロード
    ============================================================== */
 async function saveToDrive() {
-  /* --- バリデーション --- */
   var siteName = document.getElementById('site-name').value.trim();
   if (!siteName) { showStep2Error('現場名を入力してください'); return; }
 
   var totalPhotos = MODES.reduce(function(s, m) { return s + photoDB[m].length; }, 0);
   if (!totalPhotos) { showStep2Error('写真がありません（STEP 1 で写真を選択してください）'); return; }
 
-  var pending = MODES.reduce(function(s, m) {
-    return s + photoDB[m].filter(function(p) { return !p.uploaded; }).length;
-  }, 0);
-
-  if (!pending) {
-    /* すべてアップロード済み → そのまま結果を表示 */
-    showStep2Result();
-    return;
-  }
-
-  /* --- UI: アップロード開始 --- */
   var btn = document.getElementById('step2-btn');
   btn.disabled = true;
   hideEl('step2-error');
   hideEl('step2-result');
   hideEl('step3-box');
-  _total = pending;
-  _done  = 0;
-  photoSeq = 0;
-  showEl('step2-progress');
-  updateProgress();
 
-  /* --- カテゴリ順に逐次アップロード --- */
+  /* ── OAuth2 認証（初回はポップアップ、以降はスキップ） ── */
   try {
-    for (var i = 0; i < MODES.length; i++) {
-      await uploadCategoryStrict(MODES[i], siteName);
-    }
+    await getAccessToken();
   } catch (err) {
-    /* 1枚失敗 → 即停止 */
-    hideEl('step2-progress');
-    showStep2Error(
-      '❌ 送信に失敗しました。\nネットワーク接続を確認して「ドライブに保存」を再度押すと、\n失敗した写真から再送します。'
-    );
+    showStep2Error('❌ Google認証に失敗しました。\n「ドライブに保存」を再度押してください。');
     btn.disabled = false;
     return;
   }
 
-  /* --- 全完了 --- */
+  _total   = totalPhotos;
+  _done    = 0;
+  photoSeq = 0;
+  showEl('step2-progress');
+  updateProgress();
+
+  /* ── カテゴリ順にフォルダ作成 → 並列アップロード ── */
+  try {
+    for (var i = 0; i < MODES.length; i++) {
+      if (photoDB[MODES[i]].length > 0) {
+        await uploadCategory(MODES[i], siteName);
+      }
+    }
+  } catch (err) {
+    hideEl('step2-progress');
+    showStep2Error('❌ アップロードに失敗しました。\n' + err.message +
+      '\n\n「ドライブに保存」を再度押してください。');
+    btn.disabled = false;
+    return;
+  }
+
+  /* ── 全完了 ── */
   hideEl('step2-progress');
   btn.disabled = false;
   showStep2Result();
@@ -442,129 +475,136 @@ async function saveToDrive() {
   }, 150);
 }
 
-/* カテゴリ単位でアップロード（1枚失敗したら例外を投げる） */
-async function uploadCategoryStrict(mode, siteName) {
-  var pending  = photoDB[mode].filter(function(p) { return !p.uploaded; });
-  var modeLink = categoryLinks[mode];
+/* カテゴリ単位：フォルダ作成 → 並列アップロード → 共有URL取得 */
+async function uploadCategory(mode, siteName) {
+  var date       = formatDate(new Date());
+  var folderName = siteName + '_' + date + '_' + mode;
+  var folderId   = await driveCreateFolder(folderName);
+  await uploadParallel(photoDB[mode], folderId);
+  categoryLinks[mode] = await driveShareFolder(folderId);
+}
 
-  for (var i = 0; i < pending.length; i++) {
-    var photo = pending[i];
-    updateProgress();
+/* 並列アップロード（最大6並列） */
+async function uploadParallel(photos, folderId) {
+  var CONCURRENCY = 6;
+  var idx = 0;
 
-    /* 例外が伝播して saveToDrive の catch に届く */
-    var link = await uploadOnePhoto(photo, siteName);
-    photo.uploaded = true;
-    if (link) modeLink = link;
-    _done++;
-    updateProgress();
+  async function worker() {
+    while (idx < photos.length) {
+      var i = idx++;
+      await driveUploadFile(photos[i].file, folderId);
+      _done++;
+      updateProgress();
+    }
   }
 
-  if (modeLink) categoryLinks[mode] = modeLink;
+  var count = Math.min(CONCURRENCY, photos.length);
+  await Promise.all(Array.from({ length: count }, worker));
 }
 
-/* 写真1枚を GAS 経由で Drive にアップロード
-   失敗した場合は例外を投げる */
-function uploadOnePhoto(photo, siteName) {
-  return new Promise(function(resolve, reject) {
-    compressImage(photo.file, function(blob) {
-      var reader = new FileReader();
-      reader.onload = function(e) {
-        photoSeq++;
-        var base64  = e.target.result.replace(/^data:[^;]+;base64,/, '');
-        var gpsTag  = gpsCoords ? ('_GPS' + gpsCoords.lat + 'N' + gpsCoords.lng + 'E') : '';
-        var fname   = formatDatetimeFile(new Date()) + '_' + ('0000' + photoSeq).slice(-4) + gpsTag + '.jpg';
+/* ==============================================================
+   Drive API ヘルパー
+   ============================================================== */
 
-        var payload = JSON.stringify({
-          type:      'camera_photo',
-          imageData: base64,
-          mimeType:  'image/jpeg',
-          filename:  fname,
-          mode:      photo.mode,
-          siteName:  siteName,
-          date:      formatDate(new Date()),
-          lat:       gpsCoords ? gpsCoords.lat : '',
-          lng:       gpsCoords ? gpsCoords.lng : ''
-        });
-
-        var ctrl  = new AbortController();
-        var timer = setTimeout(function() { ctrl.abort(); }, 90000);
-
-        fetch(GAS_URL, {
-          method:  'POST',
-          headers: { 'Content-Type': 'text/plain' },
-          body:    payload,
-          signal:  ctrl.signal
-        })
-        .then(function(r) {
-          clearTimeout(timer);
-          if (!r.ok) throw new Error('HTTP ' + r.status);
-          return r.json();
-        })
-        .then(function(res) {
-          if (res.status !== 'ok') throw new Error(res.message || 'GAS error');
-          resolve(res.link || null);
-        })
-        .catch(function(err) {
-          clearTimeout(timer);
-          reject(err);
-        });
-      };
-      reader.onerror = function() { reject(new Error('FileReader error')); };
-      reader.readAsDataURL(blob);
-    });
+/* フォルダ作成 → フォルダID を返す */
+async function driveCreateFolder(name) {
+  var resp = await fetch('https://www.googleapis.com/drive/v3/files', {
+    method:  'POST',
+    headers: {
+      'Authorization': 'Bearer ' + accessToken,
+      'Content-Type':  'application/json'
+    },
+    body: JSON.stringify({ name: name, mimeType: 'application/vnd.google-apps.folder' })
   });
+  if (!resp.ok) throw new Error('フォルダ作成失敗 HTTP ' + resp.status);
+  var data = await resp.json();
+  return data.id;
 }
 
-/* プログレスバー更新 */
+/* 写真1枚をアップロード（multipart形式で圧縮→Drive直送） */
+async function driveUploadFile(file, folderId) {
+  var blob  = await compressImagePromise(file);
+  var fname = generateFilename();
+  var meta  = JSON.stringify({ name: fname, parents: [folderId] });
+  var form  = new FormData();
+  form.append('metadata', new Blob([meta], { type: 'application/json' }));
+  form.append('file', blob, fname);
+  var resp = await fetch(
+    'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id',
+    {
+      method:  'POST',
+      headers: { 'Authorization': 'Bearer ' + accessToken },
+      body:    form
+    }
+  );
+  if (!resp.ok) throw new Error('アップロード失敗 HTTP ' + resp.status);
+}
+
+/* フォルダを「リンクを知っている全員が閲覧可能」に設定し共有URLを返す */
+async function driveShareFolder(folderId) {
+  var resp = await fetch(
+    'https://www.googleapis.com/drive/v3/files/' + folderId + '/permissions',
+    {
+      method:  'POST',
+      headers: {
+        'Authorization': 'Bearer ' + accessToken,
+        'Content-Type':  'application/json'
+      },
+      body: JSON.stringify({ role: 'reader', type: 'anyone' })
+    }
+  );
+  if (!resp.ok) throw new Error('共有設定失敗 HTTP ' + resp.status);
+  return 'https://drive.google.com/drive/folders/' + folderId;
+}
+
+/* ==============================================================
+   プログレスバー更新
+   ============================================================== */
 function updateProgress() {
-  document.getElementById('progress-text').textContent =
-    _done + ' / ' + _total + ' 枚完了';
+  document.getElementById('progress-text').textContent = _done + ' / ' + _total + ' 枚完了';
   document.getElementById('progress-bar').style.width =
     (_total ? Math.round(_done / _total * 100) : 0) + '%';
 }
 
-/* STEP 2 完了後の URL表示 */
+/* ==============================================================
+   STEP 2 完了後の URL 表示
+   ============================================================== */
 function showStep2Result() {
   MODES.forEach(function(mode) {
     var cfg  = MODE_CFG[mode];
     var link = categoryLinks[mode];
     if (!link) return;
-
     var ta = document.getElementById('url-ta-' + cfg.id);
     if (ta) ta.value = link;
-
     showEl('url-' + cfg.id);
   });
   showEl('step2-result');
 }
 
-/* STEP 2 エラー表示 */
 function showStep2Error(msg) {
   var el = document.getElementById('step2-error');
-  el.textContent    = msg;
-  el.style.display  = 'block';
+  el.textContent      = msg;
+  el.style.display    = 'block';
   el.style.whiteSpace = 'pre-line';
 }
 
 /* ==============================================================
-   STEP 3：スプレッドシートに反映
-   カテゴリ名と URL のペアのみ送信。写真データは一切送らない。
+   STEP 3：スプレッドシートに反映（GASへ1回だけ送信）
+   送信データ：カテゴリ名とURLのペアのみ
    ============================================================== */
 async function sendToSheet() {
-  var btn     = document.getElementById('step3-btn');
-  var errEl   = document.getElementById('step3-error');
+  var btn      = document.getElementById('step3-btn');
+  var errEl    = document.getElementById('step3-error');
   var resultEl = document.getElementById('step3-result');
 
-  btn.disabled         = true;
-  errEl.style.display  = 'none';
+  btn.disabled           = true;
+  errEl.style.display    = 'none';
   resultEl.style.display = 'none';
 
   var siteName = document.getElementById('site-name').value.trim();
-
-  /* 送信データ：カテゴリ名と URL のみ */
   var modes = MODES
     .filter(function(m) { return categoryLinks[m]; })
-    .map(function(m) { return { name: m, url: categoryLinks[m] }; });
+    .map(function(m)    { return { name: m, url: categoryLinks[m] }; });
 
   var payload = JSON.stringify({
     type:     'camera_asr',
@@ -598,13 +638,12 @@ async function sendToSheet() {
 }
 
 /* ==============================================================
-   URLコピー
+   URL コピー
    ============================================================== */
 function copyUrl(btnEl) {
   var ta   = btnEl.parentElement.querySelector('.url-ta');
   var text = ta ? ta.value : '';
   if (!text) return;
-
   if (navigator.clipboard) {
     navigator.clipboard.writeText(text).then(function() {
       var orig = btnEl.textContent;
@@ -653,12 +692,19 @@ function compressImage(file, callback) {
   reader.readAsDataURL(file);
 }
 
+function compressImagePromise(file) {
+  return new Promise(function(resolve) { compressImage(file, resolve); });
+}
+
 /* ==============================================================
    日付フォーマット
    ============================================================== */
 function formatDate(d) {
-  return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2);
+  return d.getFullYear() + '-' +
+    ('0' + (d.getMonth() + 1)).slice(-2) + '-' +
+    ('0' + d.getDate()).slice(-2);
 }
+
 function formatDatetimeFile(d) {
   return d.getFullYear() +
     ('0' + (d.getMonth() + 1)).slice(-2) +
@@ -668,8 +714,15 @@ function formatDatetimeFile(d) {
     ('0' + d.getSeconds()).slice(-2);
 }
 
+function generateFilename() {
+  photoSeq++;
+  var gpsTag = gpsCoords ? ('_GPS' + gpsCoords.lat + 'N' + gpsCoords.lng + 'E') : '';
+  return formatDatetimeFile(new Date()) + '_' + ('0000' + photoSeq).slice(-4) + gpsTag + '.jpg';
+}
+
 /* 初期化 */
 initGPS();
+initGoogleAuth();
 </script>
 </body>
 </html>

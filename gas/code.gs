@@ -2,7 +2,7 @@
 //  統合 GAS スクリプト
 //  1. 除草作業 完了報告書 -> スプレッドシート（index.html）
 //  2. ASRカメラ URLのみ  -> スプレッドシート（camera.html）
-//  3. ASRカメラ 写真     -> Google ドライブ保存（camera.html）
+//     ※写真アップロードは camera.html が Drive API を直接使用する
 // =================================================================
 //
 // デプロイ手順
@@ -41,65 +41,21 @@ var CAMERA_HEADERS = ['カテゴリ', 'アルバムURL'];
 function doPost(e) {
   try {
     var data = JSON.parse(e.postData.contents);
-
-    if (data.type === 'camera_photo') { return savePhotoToDrive(data); }
-    if (data.type === 'camera_asr')   { return saveCameraToSheet(data); }
+    if (data.type === 'camera_asr') { return saveCameraToSheet(data); }
     return saveReportToSheet(data);
-
   } catch (err) {
     return makeJson({ status: 'error', message: err.toString() });
-  }
-}
-
-// =================================================================
-// 写真を Google ドライブに保存
-// フォルダ構成: ASR / 現場名 / 日付 / カテゴリ名
-// カテゴリフォルダを共有し、そのURLを返す
-// =================================================================
-function savePhotoToDrive(data) {
-  var lock = LockService.getScriptLock();
-  lock.waitLock(30000);
-
-  try {
-    var siteName   = (data.siteName || '未設定').replace(/[\\/:*?<>|"]/g, '_');
-    var date       = data.date || todayJST();
-    var mode       = data.mode || '点検';
-
-    var root       = DriveApp.getRootFolder();
-    var asrFolder  = getOrCreateFolder('ASR', root);
-    var siteFolder = getOrCreateFolder(siteName, asrFolder);
-    var dateFolder = getOrCreateFolder(date, siteFolder);
-    var modeFolder = getOrCreateFolder(mode, dateFolder);
-
-    var filename = data.filename || (nowFilename() + '.jpg');
-    var bytes    = Utilities.base64Decode(data.imageData);
-    var blob     = Utilities.newBlob(bytes, data.mimeType || 'image/jpeg', filename);
-    modeFolder.createFile(blob);
-
-    // カテゴリフォルダ単位で共有リンクを発行
-    modeFolder.setSharing(
-      DriveApp.Access.ANYONE_WITH_LINK,
-      DriveApp.Permission.VIEW
-    );
-
-    var link = 'https://drive.google.com/drive/folders/' + modeFolder.getId();
-    return makeJson({ status: 'ok', link: link });
-
-  } catch (err) {
-    return makeJson({ status: 'error', message: err.toString() });
-  } finally {
-    lock.releaseLock();
   }
 }
 
 // =================================================================
 // ASRカメラのURLをスプレッドシートに縦配列で書き込む
-// 受け取るデータ: カテゴリ名とURLのみ（写真URLは一切書き込まない）
+// 受け取るデータ: カテゴリ名とURLのペアのみ
 //
 // 書き込みイメージ:
-//   行1: 作業前 | https://drive...
-//   行2: 作業後 | https://drive...
-//   行3: 点検   | https://drive...
+//   行1: 作業前 | https://drive.google.com/drive/folders/...
+//   行2: 作業後 | https://drive.google.com/drive/folders/...
+//   行3: 点検   | https://drive.google.com/drive/folders/...
 // =================================================================
 function saveCameraToSheet(data) {
   var ss    = SpreadsheetApp.openById(SPREADSHEET_ID);
@@ -170,12 +126,6 @@ function saveReportToSheet(data) {
 // =================================================================
 // ヘルパー関数
 // =================================================================
-function getOrCreateFolder(name, parentFolder) {
-  var it = parentFolder.getFoldersByName(name);
-  if (it.hasNext()) return it.next();
-  return parentFolder.createFolder(name);
-}
-
 function todayJST() {
   return Utilities.formatDate(new Date(), 'Asia/Tokyo', 'yyyy-MM-dd');
 }

@@ -32,8 +32,8 @@ var REPORT_HEADERS = [
   '備考・連絡事項', '共有リンクURL'
 ];
 
-// camera_asr: 縦配列 ── 送信日時 | 現場名 | カテゴリ | アルバムURL
-var CAMERA_HEADERS = ['送信日時', '現場名', 'カテゴリ', 'アルバムURL'];
+// camera_asr: 縦配列 ── カテゴリ | アルバムURL
+var CAMERA_HEADERS = ['カテゴリ', 'アルバムURL'];
 
 // =================================================================
 // エントリーポイント
@@ -97,9 +97,9 @@ function savePhotoToDrive(data) {
 // 受け取るデータ: カテゴリ名とURLのみ（写真URLは一切書き込まない）
 //
 // 書き込みイメージ:
-//   行1: 送信日時 | 現場名 | 作業前 | https://drive...
-//   行2: 送信日時 | 現場名 | 作業後 | https://drive...
-//   行3: 送信日時 | 現場名 | 点検   | https://drive...
+//   行1: 作業前 | https://drive...
+//   行2: 作業後 | https://drive...
+//   行3: 点検   | https://drive...
 // =================================================================
 function saveCameraToSheet(data) {
   var ss    = SpreadsheetApp.openById(SPREADSHEET_ID);
@@ -117,12 +117,11 @@ function saveCameraToSheet(data) {
     sheet.setFrozenRows(1);
   }
 
-  var jst   = Utilities.formatDate(new Date(), 'Asia/Tokyo', 'yyyy/MM/dd HH:mm:ss');
   var modes = data.modes || [];
 
   modes.forEach(function(m) {
-    if (!m.url) return; // URLのないカテゴリはスキップ
-    sheet.appendRow([jst, data.siteName || '', m.name, m.url]);
+    if (!m.url) return;
+    sheet.appendRow([m.name, m.url]);
   });
 
   return makeJson({ status: 'ok' });

@@ -31,7 +31,7 @@ var REPORT_HEADERS = [
   '備考・連絡事項', '共有リンクURL'
 ];
 
-// camera_asr: 縦配列 ── カテゴリ | アルバムURL
+// camera_asr: 縦配列 --- カテゴリ | アルバムURL
 var CAMERA_HEADERS = ['カテゴリ', 'アルバムURL'];
 
 // =================================================================
@@ -175,4 +175,14 @@ function makeJson(obj) {
   return ContentService
     .createTextOutput(JSON.stringify(obj))
     .setMimeType(ContentService.MimeType.JSON);
+}
+
+// =================================================================
+// Drive アクセステスト（GASエディタから手動実行して権限確認）
+// 実行後: ログにフォルダIDが出れば OK。テストフォルダは自動削除。
+// =================================================================
+function testDriveAccess() {
+  var folder = DriveApp.createFolder('テスト');
+  Logger.log(folder.getId());
+  folder.setTrashed(true);
 }

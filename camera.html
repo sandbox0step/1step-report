@@ -7,7 +7,6 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="ASRカメラ">
-  <script src="https://accounts.google.com/gsi/client" async></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; }
     body {
@@ -77,11 +76,9 @@
     .count-table { width: 100%; border-collapse: collapse; font-size: 15px; }
     .count-table td { padding: 7px 6px; border-bottom: 1px solid #eee; }
     .count-table tr:last-child td { border-bottom: none; }
-    .cnt-mode   { font-weight: bold; width: 5em; }
-    .cnt-num    { text-align: right; font-variant-numeric: tabular-nums; }
-    .cnt-clear  {
-      text-align: right; padding-right: 2px;
-    }
+    .cnt-mode  { font-weight: bold; width: 5em; }
+    .cnt-num   { text-align: right; font-variant-numeric: tabular-nums; }
+    .cnt-clear { text-align: right; padding-right: 2px; }
     .cnt-clear button {
       font-size: 12px; color: #888; background: none;
       border: 1px solid #ccc; border-radius: 4px;
@@ -112,7 +109,7 @@
     }
     #progress-bar {
       background: #1565c0; height: 10px; border-radius: 4px;
-      width: 0; transition: width 0.2s;
+      width: 0; transition: width 0.3s;
     }
 
     /* ── エラーメッセージ ── */
@@ -130,9 +127,7 @@
       background: #e8f5ec; color: #1a5c2a; border: 2px solid #a5d6a7;
     }
     .url-block { margin-bottom: 16px; }
-    .url-mode-label {
-      font-size: 16px; font-weight: bold; margin-bottom: 6px;
-    }
+    .url-mode-label { font-size: 16px; font-weight: bold; margin-bottom: 6px; }
     .url-copy-row { display: flex; gap: 8px; align-items: stretch; }
     .url-ta {
       flex: 1; font-size: 13px; font-family: monospace;
@@ -231,7 +226,7 @@
     </button>
 
     <div id="step2-progress">
-      <span id="progress-text">0 / 0 枚完了</span>
+      <span id="progress-text">準備中...</span>
       <div id="progress-bar-outer"><div id="progress-bar"></div></div>
     </div>
 
@@ -294,16 +289,7 @@
 /* ==============================================================
    設定
    ============================================================== */
-// STEP3 でスプレッドシートに書き込む GAS エンドポイント
 var GAS_URL = 'https://script.google.com/macros/s/AKfycbxtnLLUlzeMgubyjW4fY9g2Cf2O2yS_P_p1mSOyaXlYUyrul1xm_tDCXVrl-PB3fqYw/exec';
-
-// ★ Google Cloud Console で取得した OAuth2 クライアントID を設定してください
-// 手順: https://console.cloud.google.com/
-//   1. 「APIとサービス」→「認証情報」→「認証情報を作成」→「OAuthクライアントID」
-//   2. 種類: ウェブアプリケーション
-//   3. 承認済みのJavaScript生成元: https://sandbox0step.github.io
-//   4. 表示されたクライアントIDをここに貼り付ける
-var CLIENT_ID = 'YOUR_CLIENT_ID.apps.googleusercontent.com';
 
 /* ==============================================================
    状態変数
@@ -316,8 +302,6 @@ var photoSeq      = 0;
 var gpsCoords     = null;
 var _total        = 0;
 var _done         = 0;
-var tokenClient   = null;
-var accessToken   = null;
 
 var MODES    = ['作業前', '作業後', '点検'];
 var MODE_CFG = {
@@ -327,38 +311,7 @@ var MODE_CFG = {
 };
 
 /* ==============================================================
-   Google Identity Services 初期化
-   ============================================================== */
-function initGoogleAuth() {
-  if (typeof google === 'undefined' || !google.accounts) {
-    setTimeout(initGoogleAuth, 200);
-    return;
-  }
-  tokenClient = google.accounts.oauth2.initTokenClient({
-    client_id: CLIENT_ID,
-    scope: 'https://www.googleapis.com/auth/drive.file',
-    callback: ''  // getAccessToken() 内で都度セット
-  });
-}
-
-/* アクセストークン取得（同意済みなら再ポップアップなし） */
-function getAccessToken() {
-  return new Promise(function(resolve, reject) {
-    tokenClient.callback = function(response) {
-      if (response.error) {
-        reject(new Error('Google認証エラー: ' + response.error));
-        return;
-      }
-      accessToken = response.access_token;
-      resolve(accessToken);
-    };
-    // accessToken があれば prompt なしで再取得を試みる
-    tokenClient.requestAccessToken({ prompt: accessToken ? '' : 'consent' });
-  });
-}
-
-/* ==============================================================
-   GPS（起動時に1回許可を求め、以降は自動更新）
+   GPS
    ============================================================== */
 function initGPS() {
   var el = document.getElementById('gps-status');
@@ -420,7 +373,7 @@ function updateAllCounts() {
 }
 
 /* ==============================================================
-   STEP 2：Google Drive API で一括アップロード
+   STEP 2：GASに一括送信してフォルダURLを受け取る
    ============================================================== */
 async function saveToDrive() {
   var siteName = document.getElementById('site-name').value.trim();
@@ -435,37 +388,36 @@ async function saveToDrive() {
   hideEl('step2-result');
   hideEl('step3-box');
 
-  /* ── OAuth2 認証（初回はポップアップ、以降はスキップ） ── */
-  try {
-    await getAccessToken();
-  } catch (err) {
-    showStep2Error('❌ Google認証に失敗しました。\n「ドライブに保存」を再度押してください。');
-    btn.disabled = false;
-    return;
-  }
-
   _total   = totalPhotos;
   _done    = 0;
   photoSeq = 0;
   showEl('step2-progress');
-  updateProgress();
+  setProgressBar(0, '準備中...');
 
-  /* ── カテゴリ順にフォルダ作成 → 並列アップロード ── */
   try {
     for (var i = 0; i < MODES.length; i++) {
-      if (photoDB[MODES[i]].length > 0) {
-        await uploadCategory(MODES[i], siteName);
-      }
+      var mode = MODES[i];
+      if (photoDB[mode].length === 0) continue;
+
+      /* フェーズ1：圧縮 → Base64変換 */
+      var photos = await compressCategory(photoDB[mode]);
+
+      /* フェーズ2：GASに1リクエストで一括送信 */
+      var date       = formatDate(new Date());
+      var folderName = siteName + '_' + date + '_' + mode;
+      setProgressBar(Math.round(_done / _total * 100), mode + ' 送信中...');
+
+      var url = await sendCategoryToGAS(mode, folderName, photos);
+      categoryLinks[mode] = url;
     }
   } catch (err) {
     hideEl('step2-progress');
-    showStep2Error('❌ アップロードに失敗しました。\n' + err.message +
+    showStep2Error('❌ 送信に失敗しました。\n' + err.message +
       '\n\n「ドライブに保存」を再度押してください。');
     btn.disabled = false;
     return;
   }
 
-  /* ── 全完了 ── */
   hideEl('step2-progress');
   btn.disabled = false;
   showStep2Result();
@@ -475,95 +427,55 @@ async function saveToDrive() {
   }, 150);
 }
 
-/* カテゴリ単位：フォルダ作成 → 並列アップロード → 共有URL取得 */
-async function uploadCategory(mode, siteName) {
-  var date       = formatDate(new Date());
-  var folderName = siteName + '_' + date + '_' + mode;
-  var folderId   = await driveCreateFolder(folderName);
-  await uploadParallel(photoDB[mode], folderId);
-  categoryLinks[mode] = await driveShareFolder(folderId);
-}
-
-/* 並列アップロード（最大6並列） */
-async function uploadParallel(photos, folderId) {
-  var CONCURRENCY = 6;
-  var idx = 0;
-
-  async function worker() {
-    while (idx < photos.length) {
-      var i = idx++;
-      await driveUploadFile(photos[i].file, folderId);
-      _done++;
-      updateProgress();
-    }
+/* カテゴリ内の全写真を圧縮してBase64文字列の配列に変換 */
+async function compressCategory(photos) {
+  var result = [];
+  for (var i = 0; i < photos.length; i++) {
+    setProgressBar(
+      Math.round(_done / _total * 100),
+      '変換中 ' + (_done + 1) + ' / ' + _total + ' 枚'
+    );
+    var blob   = await compressImagePromise(photos[i].file);
+    var base64 = await blobToBase64(blob);
+    result.push({ filename: generateFilename(), data: base64 });
+    _done++;
   }
-
-  var count = Math.min(CONCURRENCY, photos.length);
-  await Promise.all(Array.from({ length: count }, worker));
+  return result;
 }
 
-/* ==============================================================
-   Drive API ヘルパー
-   ============================================================== */
-
-/* フォルダ作成 → フォルダID を返す */
-async function driveCreateFolder(name) {
-  var resp = await fetch('https://www.googleapis.com/drive/v3/files', {
-    method:  'POST',
-    headers: {
-      'Authorization': 'Bearer ' + accessToken,
-      'Content-Type':  'application/json'
-    },
-    body: JSON.stringify({ name: name, mimeType: 'application/vnd.google-apps.folder' })
+/* GASにカテゴリ1件分を送信してフォルダURLを返す */
+async function sendCategoryToGAS(category, folderName, photos) {
+  var payload = JSON.stringify({
+    type:       'camera_upload',
+    category:   category,
+    folderName: folderName,
+    photos:     photos
   });
-  if (!resp.ok) throw new Error('フォルダ作成失敗 HTTP ' + resp.status);
-  var data = await resp.json();
-  return data.id;
-}
 
-/* 写真1枚をアップロード（multipart形式で圧縮→Drive直送） */
-async function driveUploadFile(file, folderId) {
-  var blob  = await compressImagePromise(file);
-  var fname = generateFilename();
-  var meta  = JSON.stringify({ name: fname, parents: [folderId] });
-  var form  = new FormData();
-  form.append('metadata', new Blob([meta], { type: 'application/json' }));
-  form.append('file', blob, fname);
-  var resp = await fetch(
-    'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id',
-    {
-      method:  'POST',
-      headers: { 'Authorization': 'Bearer ' + accessToken },
-      body:    form
-    }
-  );
-  if (!resp.ok) throw new Error('アップロード失敗 HTTP ' + resp.status);
-}
+  /* GASはファイル保存に時間がかかるため5分でタイムアウト */
+  var ctrl  = new AbortController();
+  var timer = setTimeout(function() { ctrl.abort(); }, 300000);
 
-/* フォルダを「リンクを知っている全員が閲覧可能」に設定し共有URLを返す */
-async function driveShareFolder(folderId) {
-  var resp = await fetch(
-    'https://www.googleapis.com/drive/v3/files/' + folderId + '/permissions',
-    {
-      method:  'POST',
-      headers: {
-        'Authorization': 'Bearer ' + accessToken,
-        'Content-Type':  'application/json'
-      },
-      body: JSON.stringify({ role: 'reader', type: 'anyone' })
-    }
-  );
-  if (!resp.ok) throw new Error('共有設定失敗 HTTP ' + resp.status);
-  return 'https://drive.google.com/drive/folders/' + folderId;
+  var r = await fetch(GAS_URL, {
+    method:  'POST',
+    headers: { 'Content-Type': 'text/plain' },
+    body:    payload,
+    signal:  ctrl.signal
+  });
+  clearTimeout(timer);
+
+  if (!r.ok) throw new Error('HTTP ' + r.status);
+  var res = await r.json();
+  if (res.status !== 'ok') throw new Error(res.message || 'GAS error');
+  return res.url;
 }
 
 /* ==============================================================
-   プログレスバー更新
+   プログレスバー
    ============================================================== */
-function updateProgress() {
-  document.getElementById('progress-text').textContent = _done + ' / ' + _total + ' 枚完了';
-  document.getElementById('progress-bar').style.width =
-    (_total ? Math.round(_done / _total * 100) : 0) + '%';
+function setProgressBar(pct, text) {
+  document.getElementById('progress-text').textContent = text;
+  document.getElementById('progress-bar').style.width  = pct + '%';
 }
 
 /* ==============================================================
@@ -590,7 +502,6 @@ function showStep2Error(msg) {
 
 /* ==============================================================
    STEP 3：スプレッドシートに反映（GASへ1回だけ送信）
-   送信データ：カテゴリ名とURLのペアのみ
    ============================================================== */
 async function sendToSheet() {
   var btn      = document.getElementById('step3-btn');
@@ -696,6 +607,18 @@ function compressImagePromise(file) {
   return new Promise(function(resolve) { compressImage(file, resolve); });
 }
 
+/* Blob を Base64文字列に変換（data: プレフィックスを除去） */
+function blobToBase64(blob) {
+  return new Promise(function(resolve, reject) {
+    var reader = new FileReader();
+    reader.onload  = function(e) {
+      resolve(e.target.result.replace(/^data:[^;]+;base64,/, ''));
+    };
+    reader.onerror = function() { reject(new Error('FileReader error')); };
+    reader.readAsDataURL(blob);
+  });
+}
+
 /* ==============================================================
    日付フォーマット
    ============================================================== */
@@ -722,7 +645,6 @@ function generateFilename() {
 
 /* 初期化 */
 initGPS();
-initGoogleAuth();
 </script>
 </body>
 </html>

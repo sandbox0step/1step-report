@@ -1,8 +1,8 @@
 // =================================================================
 //  統合 GAS スクリプト
 //  1. 除草作業 完了報告書 -> スプレッドシート（index.html）
-//  2. ASRカメラ URLのみ  -> スプレッドシート（camera.html）
-//     ※写真アップロードは camera.html が Drive API を直接使用する
+//  2. ASRカメラ 写真一括  -> Googleドライブ保存（camera.html STEP2）
+//  3. ASRカメラ URLのみ  -> スプレッドシート（camera.html STEP3）
 // =================================================================
 //
 // デプロイ手順
@@ -12,7 +12,6 @@
 //  (3)「デプロイ」->「新しいデプロイ」
 //      種類: ウェブアプリ / 実行者: 自分 / アクセス: 全員
 //  (4)「アクセスを承認」-> Googleアカウントでログイン
-//      「詳細」->「安全でないページへ移動」->「許可」
 //  (5) 表示された URL を camera.html / index.html の GAS_URL に設定
 //
 // 変更後の再デプロイ
@@ -36,12 +35,13 @@ var REPORT_HEADERS = [
 var CAMERA_HEADERS = ['カテゴリ', 'アルバムURL'];
 
 // =================================================================
-// エントリーポイント
+// エントリーポイント（認証チェックなし・全員アクセス可）
 // =================================================================
 function doPost(e) {
   try {
     var data = JSON.parse(e.postData.contents);
-    if (data.type === 'camera_asr') { return saveCameraToSheet(data); }
+    if (data.type === 'camera_upload') { return uploadPhotosAndGetUrl(data); }
+    if (data.type === 'camera_asr')    { return saveCameraToSheet(data); }
     return saveReportToSheet(data);
   } catch (err) {
     return makeJson({ status: 'error', message: err.toString() });
@@ -49,8 +49,44 @@ function doPost(e) {
 }
 
 // =================================================================
-// ASRカメラのURLをスプレッドシートに縦配列で書き込む
-// 受け取るデータ: カテゴリ名とURLのペアのみ
+// 写真を Drive に一括保存してフォルダURLを返す（camera.html STEP2）
+//
+// 受け取るデータ:
+//   {
+//     type:       "camera_upload",
+//     category:   "作業前",
+//     folderName: "現場名_2026-05-08_作業前",
+//     photos:     [{ filename: "...", data: "base64..." }, ...]
+//   }
+//
+// フォルダ構成: ASR / folderName
+// =================================================================
+function uploadPhotosAndGetUrl(data) {
+  var folderName = (data.folderName || '未設定').replace(/[\\/:*?"<>|]/g, '_');
+  var photos     = data.photos || [];
+
+  var root           = DriveApp.getRootFolder();
+  var asrFolder      = getOrCreateFolder('ASR', root);
+  var categoryFolder = getOrCreateFolder(folderName, asrFolder);
+
+  photos.forEach(function(photo, i) {
+    var filename = photo.filename || (('000' + (i + 1)).slice(-3) + '_' + nowFilename() + '.jpg');
+    var bytes    = Utilities.base64Decode(photo.data);
+    var blob     = Utilities.newBlob(bytes, 'image/jpeg', filename);
+    categoryFolder.createFile(blob);
+  });
+
+  categoryFolder.setSharing(
+    DriveApp.Access.ANYONE_WITH_LINK,
+    DriveApp.Permission.VIEW
+  );
+
+  var url = 'https://drive.google.com/drive/folders/' + categoryFolder.getId();
+  return makeJson({ status: 'ok', url: url });
+}
+
+// =================================================================
+// ASRカメラのURLをスプレッドシートに縦配列で書き込む（camera.html STEP3）
 //
 // 書き込みイメージ:
 //   行1: 作業前 | https://drive.google.com/drive/folders/...
@@ -74,7 +110,6 @@ function saveCameraToSheet(data) {
   }
 
   var modes = data.modes || [];
-
   modes.forEach(function(m) {
     if (!m.url) return;
     sheet.appendRow([m.name, m.url]);
@@ -126,8 +161,10 @@ function saveReportToSheet(data) {
 // =================================================================
 // ヘルパー関数
 // =================================================================
-function todayJST() {
-  return Utilities.formatDate(new Date(), 'Asia/Tokyo', 'yyyy-MM-dd');
+function getOrCreateFolder(name, parentFolder) {
+  var it = parentFolder.getFoldersByName(name);
+  if (it.hasNext()) return it.next();
+  return parentFolder.createFolder(name);
 }
 
 function nowFilename() {

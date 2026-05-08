@@ -186,3 +186,18 @@ function testDriveAccess() {
   Logger.log(folder.getId());
   folder.setTrashed(true);
 }
+
+function testDoPost() {
+  var testData = {
+    postData: {
+      contents: JSON.stringify({
+        type: "savePhotos",
+        category: "作業前",
+        folderName: "テスト_作業前",
+        photos: ["data:image/jpeg;base64,/9j/4AAQ"]
+      })
+    }
+  };
+  var result = doPost(testData);
+  Logger.log(result.getContent());
+}

@@ -1542,14 +1542,19 @@ async function loadCameraPhotos() {
       body:   JSON.stringify({ type: 'get_camera_data', siteName: siteName, date: date })
     });
     var text = await r.text();
-    console.log('[ASR-AUTO] GASレスポンス:', text);
+    console.log('[ASR-AUTO] GASレスポンス全文:', text);
     var res  = JSON.parse(text);
+    console.log('[ASR-AUTO] パース結果:', JSON.stringify(res));
+    console.log('[ASR-AUTO] res.data:', JSON.stringify(res.data));
 
     if (res.status === 'notfound') {
       setStatus('#fff8e1', '#e65100', '#ffcc02', '⚠️ 該当データが見つかりません（名称・作業日を確認）');
       return;
     }
     if (res.status !== 'ok') throw new Error(res.message || 'GASエラー');
+    if (!res.data || typeof res.data !== 'object') {
+      throw new Error('dataが返ってきません。GASを再デプロイしてください。レスポンス: ' + text.slice(0, 200));
+    }
 
     var data   = res.data;
     /* ASRカメラのカテゴリ → プレビューエリアIDのマッピング */

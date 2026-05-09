@@ -1547,8 +1547,8 @@ async function loadCameraPhotos() {
     console.log('[ASR-AUTO] パース結果:', JSON.stringify(res));
     console.log('[ASR-AUTO] res.data:', JSON.stringify(res.data));
 
-    if (res.status === 'notfound') {
-      setStatus('#fff8e1', '#e65100', '#ffcc02', '⚠️ 該当データが見つかりません（名称・作業日を確認）');
+    if (res.status === 'error') {
+      setStatus('#fff8e1', '#e65100', '#ffcc02', '⚠️ ' + (res.message || 'データが見つかりません'));
       return;
     }
     if (res.status !== 'ok') throw new Error(res.message || 'GASエラー');
@@ -1562,24 +1562,16 @@ async function loadCameraPhotos() {
     var loaded = [];
 
     Object.keys(catMap).forEach(function(cat) {
-      var key     = catMap[cat];
-      var catData = data[cat];
-      if (!catData) return;
-
-      /* サムネイルをプレビューエリアに追加（手動追加済みの写真はそのまま） */
-      var box = document.getElementById('prev-' + key);
-      if (box) {
-        (catData.photos || []).forEach(function(fileId) {
-          addUrlPreview('https://drive.google.com/thumbnail?id=' + fileId + '&sz=w300', box);
-        });
-      }
+      var key = catMap[cat];
+      var url = data[cat];
+      if (!url) return;
 
       /* アルバムリンク表示 */
       var linkEl = document.getElementById('album-link-' + key);
-      if (linkEl && catData.url) {
+      if (linkEl) {
         linkEl.innerHTML =
-          '📁 <a href="' + catData.url + '" target="_blank" style="color:#1565c0;word-break:break-all;">' +
-          cat + 'アルバムを開く → ' + catData.url + '</a>';
+          '📁 <a href="' + url + '" target="_blank" style="color:#1565c0;word-break:break-all;">' +
+          cat + 'アルバムを開く → ' + url + '</a>';
         linkEl.style.display = 'block';
       }
 

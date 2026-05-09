@@ -222,7 +222,7 @@ function getCameraData(data) {
 
   var ss    = SpreadsheetApp.openById(SPREADSHEET_ID);
   var sheet = ss.getSheetByName(CAMERA_SHEET);
-  if (!sheet) return { status: 'notfound', message: 'ASRカメラシートが見つかりません' };
+  if (!sheet) return { status: 'error', message: 'ASRカメラシートが見つかりません' };
 
   var rows   = sheet.getDataRange().getValues();
   var result = {};
@@ -235,27 +235,11 @@ function getCameraData(data) {
 
     if (rowSite !== siteName || rowDate !== date || !rowUrl) continue;
 
-    var photos = [];
-    try {
-      var folderId = rowUrl.replace('https://drive.google.com/drive/folders/', '');
-      var folder   = DriveApp.getFolderById(folderId);
-      var files    = folder.getFiles();
-      var count    = 0;
-      while (files.hasNext() && count < 5) {
-        var file = files.next();
-        file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-        photos.push(file.getId());
-        count++;
-      }
-    } catch (e) {
-      Logger.log('フォルダ取得エラー(' + rowCat + '): ' + e.toString());
-    }
-
-    result[rowCat] = { url: rowUrl, photos: photos };
+    result[rowCat] = rowUrl;
   }
 
   if (Object.keys(result).length === 0) {
-    return { status: 'notfound', message: '該当データが見つかりません' };
+    return { status: 'error', message: 'データが見つかりません' };
   }
   return { status: 'ok', data: result };
 }

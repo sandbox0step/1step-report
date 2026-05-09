@@ -38,6 +38,9 @@ var CAMERA_HEADERS = ['カテゴリ', 'アルバムURL'];
 // エントリーポイント（認証チェックなし・全員アクセス可）
 // =================================================================
 function doPost(e) {
+  var lock = LockService.getScriptLock();
+  lock.tryLock(30000);
+
   try {
     var data = JSON.parse(e.postData.contents);
     var result;

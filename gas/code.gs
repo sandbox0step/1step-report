@@ -136,7 +136,7 @@ function saveReportToSheet(data) {
     sheet.getDataRange().createFilter();
   }
 
-  var jst = Utilities.formatDate(new Date(), 'Asia/Tokyo', 'yyyy/MM/dd HH:mm:ss');
+  var jst = Utilities.formatDate(new Date(), 'Asia/Tokyo', 'yyyy/MM/dd_HH:mm:ss');
 
   sheet.appendRow([
     jst,

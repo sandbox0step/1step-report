@@ -46,6 +46,7 @@ function doPost(e) {
     else { result = saveReportToSheet(data); }
     return makeJson(result);
   } catch (err) {
+    Logger.log('エラー: ' + err.message);
     return makeJson({ status: 'error', message: err.toString() });
   }
 }

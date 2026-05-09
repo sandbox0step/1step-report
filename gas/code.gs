@@ -241,3 +241,25 @@ function testCameraAsr() {
     Logger.log('エラー: ' + e.toString());
   }
 }
+
+// =================================================================
+// ASRカメラシートのヘッダーを強制的に正しい形式に書き換える
+// GASエディタから手動実行する（1回だけでOK）
+// =================================================================
+function fixCameraSheetHeader() {
+  var ss    = SpreadsheetApp.openById(SPREADSHEET_ID);
+  var sheet = ss.getSheetByName(CAMERA_SHEET);
+
+  if (!sheet) {
+    sheet = ss.insertSheet(CAMERA_SHEET);
+    Logger.log('シートを新規作成しました');
+  }
+
+  sheet.getRange(1, 1, 1, CAMERA_HEADERS.length).setValues([CAMERA_HEADERS]);
+  sheet.getRange(1, 1, 1, CAMERA_HEADERS.length)
+       .setFontWeight('bold')
+       .setBackground('#dce8ff');
+  sheet.setFrozenRows(1);
+
+  Logger.log('ヘッダーを書き換えました: ' + CAMERA_HEADERS.join(' | '));
+}

@@ -40,9 +40,11 @@ var CAMERA_HEADERS = ['カテゴリ', 'アルバムURL'];
 function doPost(e) {
   try {
     var data = JSON.parse(e.postData.contents);
-    if (data.type === 'camera_upload') { return uploadPhotosAndGetUrl(data); }
-    if (data.type === 'camera_asr')    { return saveCameraToSheet(data); }
-    return saveReportToSheet(data);
+    var result;
+    if (data.type === 'camera_upload') { result = uploadPhotosAndGetUrl(data); }
+    else if (data.type === 'camera_asr') { result = saveCameraToSheet(data); }
+    else { result = saveReportToSheet(data); }
+    return makeJson(result);
   } catch (err) {
     return makeJson({ status: 'error', message: err.toString() });
   }
@@ -82,7 +84,7 @@ function uploadPhotosAndGetUrl(data) {
   );
 
   var url = 'https://drive.google.com/drive/folders/' + categoryFolder.getId();
-  return makeJson({ status: 'ok', url: url });
+  return { status: 'ok', url: url };
 }
 
 // =================================================================
@@ -115,7 +117,7 @@ function saveCameraToSheet(data) {
     sheet.appendRow([m.name, m.url]);
   });
 
-  return makeJson({ status: 'ok' });
+  return { status: 'ok' };
 }
 
 // =================================================================
@@ -155,7 +157,7 @@ function saveReportToSheet(data) {
     sheet.getDataRange().createFilter();
   }
 
-  return makeJson({ status: 'ok' });
+  return { status: 'ok' };
 }
 
 // =================================================================
@@ -188,21 +190,21 @@ function testDriveAccess() {
 }
 
 function testCameraUpload() {
-  var testData = {
-    postData: {
-      contents: JSON.stringify({
-        type: "camera_upload",
-        category: "作業前",
-        folderName: "テスト_作業前",
-        photos: [
-          {
-            name: "test.jpg",
-            data: "/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/2wBDAQkJCQwLDBgNDRgyIRwhMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjL/wAARCAABAAEDASIAAhEBAxEB/8QAFAABAAAAAAAAAAAAAAAAAAAACf/EABQQAQAAAAAAAAAAAAAAAAAAAAD/xAAUAQEAAAAAAAAAAAAAAAAAAAAA/8QAFBEBAAAAAAAAAAAAAAAAAAAAAP/aAAwDAQACEQMRAD8AJQAB/9k="
-          }
-        ]
-      })
-    }
+  var data = {
+    type: "camera_upload",
+    category: "作業前",
+    folderName: "テスト_作業前",
+    photos: [
+      {
+        filename: "test.jpg",
+        data: "/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/2wBDAQkJCQwLDBgNDRgyIRwhMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjL/wAARCAABAAEDASIAAhEBAxEB/8QAFAABAAAAAAAAAAAAAAAAAAAACf/EABQQAQAAAAAAAAAAAAAAAAAAAAD/xAAUAQEAAAAAAAAAAAAAAAAAAAAA/8QAFBEBAAAAAAAAAAAAAAAAAAAAAP/aAAwDAQACEQMRAD8AJQAB/9k="
+      }
+    ]
   };
-  var result = doPost(testData);
-  Logger.log(result.getContent());
+  try {
+    var result = uploadPhotosAndGetUrl(data);
+    Logger.log(JSON.stringify(result));
+  } catch (e) {
+    Logger.log('エラー: ' + e.toString());
+  }
 }

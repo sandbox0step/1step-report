@@ -1,0 +1,9 @@
+{
+  "name": "除草作業 完了報告書",
+  "short_name": "除草報告書",
+  "start_url": "/1step-report/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "theme_color": "#1a5c2a",
+  "background_color": "#ffffff"
+}

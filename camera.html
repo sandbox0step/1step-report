@@ -1,0 +1,662 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>ASR カメラ</title>
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="ASRカメラ">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    body {
+      font-family: sans-serif; font-size: 16px; margin: 0; background: #f4f6f8;
+      padding: 12px;
+      padding-top:    max(12px, env(safe-area-inset-top));
+      padding-bottom: max(60px, env(safe-area-inset-bottom));
+      padding-left:   max(12px, env(safe-area-inset-left));
+      padding-right:  max(12px, env(safe-area-inset-right));
+    }
+    h1 { font-size: 20px; margin: 8px 0 12px; }
+
+    /* GPS */
+    #gps-status {
+      font-size: 12px; padding: 6px 10px; border-radius: 6px; margin-bottom: 14px;
+      background: #f0f4f8; border: 1px solid #b0bec5; color: #555;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    #gps-status.ok  { background: #e8f5ec; border-color: #a5d6a7; color: #1a5c2a; }
+    #gps-status.err { background: #fdecea; border-color: #ef9a9a; color: #c0392b; }
+
+    /* ── ステップボックス ── */
+    .step-box {
+      background: #fff; border: 1px solid #ddd; border-radius: 10px;
+      margin-bottom: 16px; overflow: hidden;
+    }
+    .step-header {
+      background: #2e7d45; color: #fff;
+      font-size: 16px; font-weight: bold; padding: 11px 14px;
+      letter-spacing: 0.03em;
+    }
+    .step-body { padding: 14px; }
+
+    /* ── フォーム要素 ── */
+    label { display: block; font-weight: bold; margin: 10px 0 5px; font-size: 15px; }
+    input[type=text] {
+      display: block; width: 100%; font-size: 16px;
+      padding: 10px; border: 2px solid #bbb; border-radius: 6px;
+      color: #000; background: #fff;
+    }
+    input[type=text]:focus { outline: none; border-color: #1565c0; }
+
+    /* ── モードボタン ── */
+    .mode-btns { display: flex; gap: 8px; margin: 12px 0; }
+    .mode-btn {
+      flex: 1; font-size: 15px; font-weight: bold; padding: 13px 4px;
+      background: #f5f5f5; color: #555;
+      border: 2px solid #ddd; border-radius: 8px;
+      cursor: pointer; -webkit-appearance: none;
+    }
+    #btn-before.active { background: #1565c0; color: #fff; border-color: #1565c0; }
+    #btn-after.active  { background: #e65100; color: #fff; border-color: #e65100; }
+    #btn-check.active  { background: #6a1b9a; color: #fff; border-color: #6a1b9a; }
+
+    /* ── 写真選択ボタン ── */
+    .select-btn {
+      display: block; width: 100%; font-size: 18px; font-weight: bold;
+      padding: 18px; margin-bottom: 14px;
+      background: #2e7d45; color: #fff;
+      border: none; border-radius: 8px;
+      cursor: pointer; -webkit-appearance: none;
+    }
+    .select-btn:active   { background: #1a5c2a; }
+    .select-btn:disabled { background: #90a4ae; cursor: not-allowed; }
+
+    /* ── カテゴリ別枚数 ── */
+    .count-table { width: 100%; border-collapse: collapse; font-size: 15px; }
+    .count-table td { padding: 7px 6px; border-bottom: 1px solid #eee; }
+    .count-table tr:last-child td { border-bottom: none; }
+    .cnt-mode  { font-weight: bold; width: 5em; }
+    .cnt-num   { text-align: right; font-variant-numeric: tabular-nums; }
+    .cnt-clear { text-align: right; padding-right: 2px; }
+    .cnt-clear button {
+      font-size: 12px; color: #888; background: none;
+      border: 1px solid #ccc; border-radius: 4px;
+      padding: 2px 8px; cursor: pointer;
+    }
+    .cnt-clear button:active { background: #fee; color: #c0392b; }
+
+    /* ── STEP 2: ドライブ保存ボタン ── */
+    .drive-btn {
+      display: block; width: 100%; font-size: 20px; font-weight: bold;
+      padding: 22px; margin-bottom: 10px;
+      background: #1565c0; color: #fff;
+      border: none; border-radius: 8px;
+      cursor: pointer; -webkit-appearance: none;
+    }
+    .drive-btn:active   { background: #0d47a1; }
+    .drive-btn:disabled { background: #90a4ae; cursor: not-allowed; }
+
+    /* ── プログレス ── */
+    #step2-progress {
+      display: none; margin-bottom: 10px;
+      text-align: center; font-size: 15px; font-weight: bold;
+      padding: 10px 12px; background: #e3f2fd;
+      border: 1px solid #90caf9; border-radius: 8px;
+    }
+    #progress-bar-outer {
+      background: #bbdefb; border-radius: 4px; height: 10px; margin-top: 8px;
+    }
+    #progress-bar {
+      background: #1565c0; height: 10px; border-radius: 4px;
+      width: 0; transition: width 0.3s;
+    }
+
+    /* ── エラーメッセージ ── */
+    .error-msg {
+      display: none; font-size: 14px; font-weight: bold;
+      padding: 10px 12px; border-radius: 8px; margin-bottom: 10px;
+      background: #fdecea; color: #c0392b; border: 1px solid #ef9a9a;
+    }
+
+    /* ── STEP 2: 完了後 URL表示（大きく） ── */
+    #step2-result { display: none; }
+    .success-banner {
+      font-size: 18px; font-weight: bold; text-align: center;
+      padding: 14px; border-radius: 8px; margin-bottom: 16px;
+      background: #e8f5ec; color: #1a5c2a; border: 2px solid #a5d6a7;
+    }
+    .url-block { margin-bottom: 16px; }
+    .url-mode-label { font-size: 16px; font-weight: bold; margin-bottom: 6px; }
+    .url-copy-row { display: flex; gap: 8px; align-items: stretch; }
+    .url-ta {
+      flex: 1; font-size: 13px; font-family: monospace;
+      color: #0d47a1; padding: 12px;
+      border: 2px solid #90caf9; border-radius: 8px;
+      background: #e3f2fd; resize: none; min-height: 72px;
+      word-break: break-all; line-height: 1.5;
+    }
+    .copy-btn {
+      font-size: 15px; font-weight: bold; padding: 12px 18px;
+      background: #1565c0; color: #fff;
+      border: none; border-radius: 8px; cursor: pointer;
+      white-space: nowrap; -webkit-appearance: none; align-self: stretch;
+    }
+    .copy-btn:active { background: #0d47a1; }
+
+    /* ── STEP 3 ── */
+    .sheet-btn {
+      display: block; width: 100%; font-size: 20px; font-weight: bold;
+      padding: 22px; margin-bottom: 10px;
+      background: #1e8e3e; color: #fff;
+      border: none; border-radius: 8px;
+      cursor: pointer; -webkit-appearance: none;
+    }
+    .sheet-btn:active   { background: #1a5c2a; }
+    .sheet-btn:disabled { background: #90a4ae; cursor: not-allowed; }
+
+    .complete-msg {
+      display: none; font-size: 16px; font-weight: bold; text-align: center;
+      padding: 14px; border-radius: 8px;
+      background: #e8f5ec; color: #1a5c2a; border: 2px solid #a5d6a7;
+    }
+  </style>
+</head>
+<body>
+
+<h1>ASR カメラ</h1>
+<div id="gps-status">📍 GPS: 取得中...</div>
+
+<!-- ══════════════════════════════════════════════
+     STEP 1：写真を選択する
+     ══════════════════════════════════════════════ -->
+<div class="step-box">
+  <div class="step-header">STEP 1　写真を選択する</div>
+  <div class="step-body">
+
+    <label for="site-name">現場名
+      <span style="font-weight:normal;font-size:12px;color:#888;">（Driveフォルダ名）</span>
+    </label>
+    <input type="text" id="site-name" placeholder="例：○○太陽光発電所">
+
+    <label style="margin-top:14px;">モード選択</label>
+    <div class="mode-btns">
+      <button class="mode-btn active" id="btn-before" type="button" onclick="setMode('作業前')">作業前</button>
+      <button class="mode-btn"        id="btn-after"  type="button" onclick="setMode('作業後')">作業後</button>
+      <button class="mode-btn"        id="btn-check"  type="button" onclick="setMode('点検')">点検</button>
+    </div>
+
+    <input type="file" id="cam-input" accept="image/*" multiple style="display:none"
+           onchange="onFileSelect(this)">
+    <button id="select-btn" class="select-btn" type="button"
+            onclick="document.getElementById('cam-input').click()">
+      📂 <span id="mode-label">作業前</span> の写真を選択（複数可）
+    </button>
+
+    <table class="count-table">
+      <tr>
+        <td class="cnt-mode" style="color:#1565c0;">作業前</td>
+        <td class="cnt-num"  id="cnt-before">0 枚</td>
+        <td class="cnt-clear"><button type="button" onclick="clearCategory('作業前')">クリア</button></td>
+      </tr>
+      <tr>
+        <td class="cnt-mode" style="color:#e65100;">作業後</td>
+        <td class="cnt-num"  id="cnt-after">0 枚</td>
+        <td class="cnt-clear"><button type="button" onclick="clearCategory('作業後')">クリア</button></td>
+      </tr>
+      <tr>
+        <td class="cnt-mode" style="color:#6a1b9a;">点検</td>
+        <td class="cnt-num"  id="cnt-check">0 枚</td>
+        <td class="cnt-clear"><button type="button" onclick="clearCategory('点検')">クリア</button></td>
+      </tr>
+    </table>
+
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     STEP 2：Googleドライブに保存する
+     ══════════════════════════════════════════════ -->
+<div class="step-box">
+  <div class="step-header">STEP 2　Googleドライブに保存する</div>
+  <div class="step-body">
+
+    <button id="step2-btn" class="drive-btn" type="button" onclick="saveToDrive()">
+      💾 ドライブに保存
+    </button>
+
+    <div id="step2-progress">
+      <span id="progress-text">準備中...</span>
+      <div id="progress-bar-outer"><div id="progress-bar"></div></div>
+    </div>
+
+    <div id="step2-error" class="error-msg"></div>
+
+    <!-- 完了後：URL を大きく表示 -->
+    <div id="step2-result">
+      <div class="success-banner">✅ ドライブへの保存が完了しました</div>
+
+      <div id="url-before" class="url-block" style="display:none">
+        <div class="url-mode-label" style="color:#1565c0;">■ 作業前　フォルダURL</div>
+        <div class="url-copy-row">
+          <textarea id="url-ta-before" class="url-ta" readonly rows="3"></textarea>
+          <button class="copy-btn" type="button" onclick="copyUrl(this)">コピー</button>
+        </div>
+      </div>
+
+      <div id="url-after" class="url-block" style="display:none">
+        <div class="url-mode-label" style="color:#e65100;">■ 作業後　フォルダURL</div>
+        <div class="url-copy-row">
+          <textarea id="url-ta-after" class="url-ta" readonly rows="3"></textarea>
+          <button class="copy-btn" type="button" onclick="copyUrl(this)">コピー</button>
+        </div>
+      </div>
+
+      <div id="url-check" class="url-block" style="display:none">
+        <div class="url-mode-label" style="color:#6a1b9a;">■ 点検　フォルダURL</div>
+        <div class="url-copy-row">
+          <textarea id="url-ta-check" class="url-ta" readonly rows="3"></textarea>
+          <button class="copy-btn" type="button" onclick="copyUrl(this)">コピー</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     STEP 3：スプレッドシートに反映する
+     STEP 2 完了後のみ表示
+     ══════════════════════════════════════════════ -->
+<div class="step-box" id="step3-box" style="display:none">
+  <div class="step-header">STEP 3　スプレッドシートに反映する</div>
+  <div class="step-body">
+
+    <button id="step3-btn" class="sheet-btn" type="button" onclick="sendToSheet()">
+      📊 スプレッドシートに反映
+    </button>
+
+    <div id="step3-error" class="error-msg"></div>
+
+    <div id="step3-result" class="complete-msg">
+      ✅ スプレッドシートへの反映が完了しました
+    </div>
+
+  </div>
+</div>
+
+<script>
+/* ==============================================================
+   設定
+   ============================================================== */
+var GAS_URL = 'https://script.google.com/macros/s/AKfycbxtnLLUlzeMgubyjW4fY9g2Cf2O2yS_P_p1mSOyaXlYUyrul1xm_tDCXVrl-PB3fqYw/exec';
+
+/* ==============================================================
+   状態変数
+   ============================================================== */
+var currentMode   = '作業前';
+var photoDB       = { '作業前': [], '作業後': [], '点検': [] };
+var categoryLinks = { '作業前': null, '作業後': null, '点検': null };
+var photoId       = 0;
+var photoSeq      = 0;
+var gpsCoords     = null;
+var _total        = 0;
+var _done         = 0;
+
+var MODES    = ['作業前', '作業後', '点検'];
+var MODE_CFG = {
+  '作業前': { id: 'before', color: '#1565c0', cntId: 'cnt-before' },
+  '作業後': { id: 'after',  color: '#e65100', cntId: 'cnt-after'  },
+  '点検':   { id: 'check',  color: '#6a1b9a', cntId: 'cnt-check'  }
+};
+
+/* ==============================================================
+   GPS
+   ============================================================== */
+function initGPS() {
+  var el = document.getElementById('gps-status');
+  if (!navigator.geolocation) {
+    el.textContent = '📍 GPS: このブラウザはGPS非対応';
+    el.className   = 'err';
+    return;
+  }
+  navigator.geolocation.watchPosition(
+    function(pos) {
+      gpsCoords      = { lat: pos.coords.latitude.toFixed(6), lng: pos.coords.longitude.toFixed(6) };
+      el.textContent = '📍 ' + gpsCoords.lat + ', ' + gpsCoords.lng +
+                       '（精度 ±' + Math.round(pos.coords.accuracy) + 'm）';
+      el.className   = 'ok';
+    },
+    function() {
+      el.textContent = '📍 GPS: 取得失敗（設定→位置情報を許可してください）';
+      el.className   = 'err';
+    },
+    { enableHighAccuracy: true, timeout: 15000, maximumAge: 30000 }
+  );
+}
+
+/* ==============================================================
+   STEP 1：モード切り替え
+   ============================================================== */
+function setMode(mode) {
+  currentMode = mode;
+  document.getElementById('mode-label').textContent = mode;
+  MODES.forEach(function(m) {
+    document.getElementById('btn-' + MODE_CFG[m].id).classList.toggle('active', m === mode);
+  });
+}
+
+/* ==============================================================
+   STEP 1：写真選択（メモリ蓄積のみ・送信なし）
+   ============================================================== */
+function onFileSelect(input) {
+  var files = Array.from(input.files || []);
+  if (!files.length) return;
+  var mode = currentMode;
+  files.forEach(function(file) {
+    photoDB[mode].push({ id: ++photoId, mode: mode, file: file });
+  });
+  updateAllCounts();
+  input.value = '';
+}
+
+function clearCategory(mode) {
+  photoDB[mode] = [];
+  categoryLinks[mode] = null;
+  updateAllCounts();
+}
+
+function updateAllCounts() {
+  MODES.forEach(function(m) {
+    document.getElementById(MODE_CFG[m].cntId).textContent = photoDB[m].length + ' 枚';
+  });
+}
+
+/* ==============================================================
+   STEP 2：GASに一括送信してフォルダURLを受け取る
+   ============================================================== */
+async function saveToDrive() {
+  var siteName = document.getElementById('site-name').value.trim();
+  if (!siteName) { showStep2Error('現場名を入力してください'); return; }
+
+  var totalPhotos = MODES.reduce(function(s, m) { return s + photoDB[m].length; }, 0);
+  if (!totalPhotos) { showStep2Error('写真がありません（STEP 1 で写真を選択してください）'); return; }
+
+  var btn = document.getElementById('step2-btn');
+  btn.disabled = true;
+  hideEl('step2-error');
+  hideEl('step2-result');
+  hideEl('step3-box');
+
+  _total   = totalPhotos;
+  _done    = 0;
+  photoSeq = 0;
+  showEl('step2-progress');
+  setProgressBar(0, '準備中...');
+
+  try {
+    for (var i = 0; i < MODES.length; i++) {
+      var mode = MODES[i];
+      if (photoDB[mode].length === 0) continue;
+
+      /* フェーズ1：圧縮 → Base64変換 */
+      var photos = await compressCategory(photoDB[mode]);
+
+      /* フェーズ2：GASに1リクエストで一括送信 */
+      var date       = formatDate(new Date());
+      var folderName = siteName + '_' + date + '_' + mode;
+      setProgressBar(Math.round(_done / _total * 100), mode + ' 送信中...');
+
+      var url = await sendCategoryToGAS(mode, folderName, photos);
+      categoryLinks[mode] = url;
+    }
+  } catch (err) {
+    hideEl('step2-progress');
+    showStep2Error('❌ 送信に失敗しました。\n' + err.message +
+      '\n\n「ドライブに保存」を再度押してください。');
+    btn.disabled = false;
+    return;
+  }
+
+  hideEl('step2-progress');
+  btn.disabled = false;
+  showStep2Result();
+  showEl('step3-box');
+  setTimeout(function() {
+    document.getElementById('step3-box').scrollIntoView({ behavior: 'smooth' });
+  }, 150);
+}
+
+/* カテゴリ内の全写真を圧縮してBase64文字列の配列に変換 */
+async function compressCategory(photos) {
+  var result = [];
+  for (var i = 0; i < photos.length; i++) {
+    setProgressBar(
+      Math.round(_done / _total * 100),
+      '変換中 ' + (_done + 1) + ' / ' + _total + ' 枚'
+    );
+    var blob   = await compressImagePromise(photos[i].file);
+    var base64 = await blobToBase64(blob);
+    result.push({ filename: generateFilename(), data: base64 });
+    _done++;
+  }
+  return result;
+}
+
+/* GASにカテゴリ1件分を送信してフォルダURLを返す */
+async function sendCategoryToGAS(category, folderName, photos) {
+  var data = {
+    type:       'camera_upload',
+    category:   category,
+    folderName: folderName,
+    photos:     photos
+  };
+  console.log('[STEP2] 送信データ:', JSON.stringify(data).slice(0, 300));
+
+  /* GASはファイル保存に時間がかかるため5分でタイムアウト */
+  var ctrl  = new AbortController();
+  var timer = setTimeout(function() { ctrl.abort(); }, 300000);
+
+  var r = await fetch(GAS_URL, {
+    method: 'POST',
+    body:   JSON.stringify(data),
+    signal: ctrl.signal
+  });
+  clearTimeout(timer);
+
+  console.log('[STEP2] HTTPステータス:', r.status, r.ok);
+  if (!r.ok) throw new Error('HTTP ' + r.status);
+
+  var text = await r.text();
+  console.log('[STEP2] レスポンス本文:', text);
+
+  var res = JSON.parse(text);
+  if (res.status !== 'ok') throw new Error(res.message || 'GAS error');
+  return res.url;
+}
+
+/* ==============================================================
+   プログレスバー
+   ============================================================== */
+function setProgressBar(pct, text) {
+  document.getElementById('progress-text').textContent = text;
+  document.getElementById('progress-bar').style.width  = pct + '%';
+}
+
+/* ==============================================================
+   STEP 2 完了後の URL 表示
+   ============================================================== */
+function showStep2Result() {
+  MODES.forEach(function(mode) {
+    var cfg  = MODE_CFG[mode];
+    var link = categoryLinks[mode];
+    if (!link) return;
+    var ta = document.getElementById('url-ta-' + cfg.id);
+    if (ta) ta.value = link;
+    showEl('url-' + cfg.id);
+  });
+  showEl('step2-result');
+}
+
+function showStep2Error(msg) {
+  var el = document.getElementById('step2-error');
+  el.textContent      = msg;
+  el.style.display    = 'block';
+  el.style.whiteSpace = 'pre-line';
+}
+
+/* ==============================================================
+   STEP 3：スプレッドシートに反映（GASへ1回だけ送信）
+   ============================================================== */
+async function sendToSheet() {
+  var btn      = document.getElementById('step3-btn');
+  var errEl    = document.getElementById('step3-error');
+  var resultEl = document.getElementById('step3-result');
+
+  btn.disabled           = true;
+  errEl.style.display    = 'none';
+  resultEl.style.display = 'none';
+
+  var siteName = document.getElementById('site-name').value.trim();
+  var modes = MODES
+    .filter(function(m) { return categoryLinks[m]; })
+    .map(function(m)    { return { name: m, url: categoryLinks[m] }; });
+
+  var data3 = {
+    type:     'camera_asr',
+    siteName: siteName,
+    date:     formatDate(new Date()),
+    modes:    modes
+  };
+  console.log('[STEP3] 送信データ:', JSON.stringify(data3));
+
+  var ctrl  = new AbortController();
+  var timer = setTimeout(function() { ctrl.abort(); }, 15000);
+
+  try {
+    var r = await fetch(GAS_URL, {
+      method: 'POST',
+      body:   JSON.stringify(data3),
+      signal: ctrl.signal
+    });
+    clearTimeout(timer);
+
+    console.log('[STEP3] HTTPステータス:', r.status, r.ok);
+    var text = await r.text();
+    console.log('[STEP3] レスポンス本文:', text);
+
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    var res = JSON.parse(text);
+    if (res.status !== 'ok') throw new Error(res.message || 'GAS error');
+
+    resultEl.style.display = 'block';
+  } catch (err) {
+    clearTimeout(timer);
+    console.error('[STEP3] エラー:', err.message);
+    errEl.textContent   = '❌ 送信に失敗しました：' + err.message;
+    errEl.style.display = 'block';
+  }
+
+  btn.disabled = false;
+}
+
+/* ==============================================================
+   URL コピー
+   ============================================================== */
+function copyUrl(btnEl) {
+  var ta   = btnEl.parentElement.querySelector('.url-ta');
+  var text = ta ? ta.value : '';
+  if (!text) return;
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(text).then(function() {
+      var orig = btnEl.textContent;
+      btnEl.textContent = '完了!';
+      setTimeout(function() { btnEl.textContent = orig; }, 1500);
+    }).catch(function() { fallbackCopy(ta); });
+  } else {
+    fallbackCopy(ta);
+  }
+}
+
+function fallbackCopy(ta) {
+  ta.select();
+  ta.setSelectionRange(0, 99999);
+  try { document.execCommand('copy'); alert('コピーしました'); }
+  catch (e) { alert('手動でコピーしてください'); }
+}
+
+/* ==============================================================
+   DOM ユーティリティ
+   ============================================================== */
+function showEl(id) { document.getElementById(id).style.display = ''; }
+function hideEl(id) { document.getElementById(id).style.display = 'none'; }
+
+/* ==============================================================
+   画像圧縮（最大1920px・JPEG 0.75）
+   ============================================================== */
+function compressImage(file, callback) {
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    var img = new Image();
+    img.onload = function() {
+      var MAX   = 1920;
+      var scale = Math.min(1, MAX / Math.max(img.naturalWidth, img.naturalHeight));
+      var w     = Math.round(img.naturalWidth  * scale);
+      var h     = Math.round(img.naturalHeight * scale);
+      var c     = document.createElement('canvas');
+      c.width   = w; c.height = h;
+      c.getContext('2d').drawImage(img, 0, 0, w, h);
+      c.toBlob(function(blob) { callback(blob); }, 'image/jpeg', 0.75);
+    };
+    img.onerror = function() { callback(file); };
+    img.src = e.target.result;
+  };
+  reader.onerror = function() { callback(file); };
+  reader.readAsDataURL(file);
+}
+
+function compressImagePromise(file) {
+  return new Promise(function(resolve) { compressImage(file, resolve); });
+}
+
+/* Blob を Base64文字列に変換（data: プレフィックスを除去） */
+function blobToBase64(blob) {
+  return new Promise(function(resolve, reject) {
+    var reader = new FileReader();
+    reader.onload  = function(e) {
+      resolve(e.target.result.replace(/^data:[^;]+;base64,/, ''));
+    };
+    reader.onerror = function() { reject(new Error('FileReader error')); };
+    reader.readAsDataURL(blob);
+  });
+}
+
+/* ==============================================================
+   日付フォーマット
+   ============================================================== */
+function formatDate(d) {
+  return d.getFullYear() + '-' +
+    ('0' + (d.getMonth() + 1)).slice(-2) + '-' +
+    ('0' + d.getDate()).slice(-2);
+}
+
+function formatDatetimeFile(d) {
+  return d.getFullYear() +
+    ('0' + (d.getMonth() + 1)).slice(-2) +
+    ('0' + d.getDate()).slice(-2) + '_' +
+    ('0' + d.getHours()).slice(-2) +
+    ('0' + d.getMinutes()).slice(-2) +
+    ('0' + d.getSeconds()).slice(-2);
+}
+
+function generateFilename() {
+  photoSeq++;
+  var gpsTag = gpsCoords ? ('_GPS' + gpsCoords.lat + 'N' + gpsCoords.lng + 'E') : '';
+  return formatDatetimeFile(new Date()) + '_' + ('0000' + photoSeq).slice(-4) + gpsTag + '.jpg';
+}
+
+/* 初期化 */
+initGPS();
+</script>
+</body>
+</html>

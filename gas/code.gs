@@ -316,10 +316,9 @@ function fixCameraSheetHeader() {
 }
 
 function testGetCameraData() {
-  var data = {
+  var result = getCameraData({
     siteName: "てる",
     date: "2026/05/10"
-  };
-  var result = getCameraData(data);
+  });
   Logger.log(JSON.stringify(result));
 }

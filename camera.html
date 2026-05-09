@@ -522,28 +522,38 @@ async function sendToSheet() {
     .filter(function(m) { return categoryLinks[m]; })
     .map(function(m)    { return { name: m, url: categoryLinks[m] }; });
 
-  var payload = JSON.stringify({
+  var data3 = {
     type:     'camera_asr',
     siteName: siteName,
     date:     formatDate(new Date()),
     modes:    modes
-  });
+  };
+  console.log('[STEP3] 送信データ:', JSON.stringify(data3));
 
   var ctrl  = new AbortController();
   var timer = setTimeout(function() { ctrl.abort(); }, 15000);
 
   try {
-    await fetch(GAS_URL, {
-      method:  'POST',
-      headers: { 'Content-Type': 'text/plain' },
-      body:    payload,
-      signal:  ctrl.signal
+    var r = await fetch(GAS_URL, {
+      method: 'POST',
+      body:   JSON.stringify(data3),
+      signal: ctrl.signal
     });
     clearTimeout(timer);
+
+    console.log('[STEP3] HTTPステータス:', r.status, r.ok);
+    var text = await r.text();
+    console.log('[STEP3] レスポンス本文:', text);
+
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    var res = JSON.parse(text);
+    if (res.status !== 'ok') throw new Error(res.message || 'GAS error');
+
     resultEl.style.display = 'block';
   } catch (err) {
     clearTimeout(timer);
-    errEl.textContent   = '❌ 送信に失敗しました。再度「スプレッドシートに反映」を押してください。';
+    console.error('[STEP3] エラー:', err.message);
+    errEl.textContent   = '❌ 送信に失敗しました：' + err.message;
     errEl.style.display = 'block';
   }
 

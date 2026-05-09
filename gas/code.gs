@@ -31,8 +31,8 @@ var REPORT_HEADERS = [
   '備考・連絡事項', '共有リンクURL'
 ];
 
-// camera_asr: 縦配列 --- カテゴリ | アルバムURL
-var CAMERA_HEADERS = ['カテゴリ', 'アルバムURL'];
+// camera_asr: 縦配列 --- 現場名 | 日付 | カテゴリ | アルバムURL
+var CAMERA_HEADERS = ['現場名', '日付', 'カテゴリ', 'アルバムURL'];
 
 // =================================================================
 // エントリーポイント（認証チェックなし・全員アクセス可）
@@ -115,10 +115,12 @@ function saveCameraToSheet(data) {
     sheet.setFrozenRows(1);
   }
 
-  var modes = data.modes || [];
+  var siteName = data.siteName || '';
+  var date     = data.date     || '';
+  var modes    = data.modes    || [];
   modes.forEach(function(m) {
     if (!m.url) return;
-    sheet.appendRow([m.name, m.url]);
+    sheet.appendRow([siteName, date, m.name, m.url]);
   });
 
   return { status: 'ok' };

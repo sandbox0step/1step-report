@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>ASR 自動報告書</title>
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="ASR報告書">
+  <style>
+    /* ===== 共通 ===== */
+    * { box-sizing: border-box; }
+    body {
+      font-family: sans-serif; font-size: 16px; margin: 0; background: #fff;
+      padding: 12px;
+      padding-top:    max(12px, env(safe-area-inset-top));
+      padding-bottom: max(12px, env(safe-area-inset-bottom));
+      padding-left:   max(12px, env(safe-area-inset-left));
+      padding-right:  max(12px, env(safe-area-inset-right));
+    }
+    h1 { font-size: 20px; margin: 8px 0 16px; }
+    h2 {
+      font-size: 17px; background: #2e7d45; color: #fff;
+      padding: 8px 12px; margin: 20px -12px 12px;
+    }
+    h3 {
+      font-size: 16px; color: #1a5c2a;
+      border-left: 4px solid #2e7d45; padding-left: 8px;
+      margin: 14px 0 6px;
+    }
+    label { display: block; font-weight: bold; margin: 10px 0 4px; font-size: 15px; }
+    input[type=text],
+    input[type=date],
+    input[type=time],
+    textarea {
+      display: block; width: 100%; font-size: 16px;
+      padding: 10px; color: #000; background: #fff;
+      border: 2px solid #333; border-radius: 4px;
+    }
+    textarea { min-height: 80px; resize: vertical; }
+
+    /* ===== ボタン ===== */
+    .btn {
+      display: block; width: 100%; font-size: 17px; font-weight: bold;
+      padding: 14px; margin: 12px 0;
+      border: none; border-radius: 8px;
+      cursor: pointer; -webkit-appearance: none;
+    }
+    .btn-green  { background: #1a5c2a; color: #fff; }
+    .btn-green:active  { background: #144821; }
+    .btn-blue   { background: #1565c0; color: #fff; }
+    .btn-blue:active   { background: #0d47a1; }
+    .btn-outline { background: #fff; color: #1a5c2a; border: 2px solid #1a5c2a; }
+    .btn:disabled { background: #b0bec5; color: #fff; cursor: not-allowed; border: none; }
+
+    /* ===== ステータス ===== */
+    .status {
+      padding: 10px 12px; border-radius: 6px;
+      font-size: 14px; font-weight: bold; margin: 8px 0;
+      display: none;
+    }
+    .status.loading { display: block; background: #e3f2fd; color: #1565c0; border: 1px solid #90caf9; }
+    .status.ok      { display: block; background: #e8f5ec; color: #1a5c2a; border: 1px solid #a5d6a7; }
+    .status.error   { display: block; background: #fdecea; color: #c0392b; border: 1px solid #ef9a9a; }
+
+    /* ===== 写真エリア ===== */
+    .photo-card {
+      background: #f8fdf9; border: 1px solid #b2d8bc;
+      border-radius: 8px; padding: 12px; margin: 10px 0;
+    }
+    .photo-card h3 { margin-top: 0; }
+    .photo-grid {
+      display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0;
+    }
+    .photo-grid img {
+      width: calc(33.33% - 4px); aspect-ratio: 4/3;
+      object-fit: cover; border: 1px solid #ccc; border-radius: 4px;
+      background: #eee;
+    }
+    .album-link {
+      display: inline-block; margin-top: 6px;
+      color: #1565c0; font-size: 14px; word-break: break-all;
+    }
+    .no-data { color: #999; font-size: 14px; }
+
+    /* ===== 報告書プレビュー ===== */
+    #view-report { display: none; }
+    #view-report h1 { text-align: center; font-size: 22px; margin: 16px 0 4px; }
+    #view-report .r-sub { text-align: center; color: #555; font-size: 14px; margin-bottom: 20px; }
+    #view-report table { width: 100%; border-collapse: collapse; margin-bottom: 14px; }
+    #view-report th { background: #e8f5ec; border: 1px solid #aaa; padding: 8px 10px; font-size: 15px; width: 38%; white-space: nowrap; vertical-align: top; }
+    #view-report td { border: 1px solid #aaa; padding: 8px 10px; font-size: 15px; vertical-align: top; }
+    #view-report .r-h2 {
+      font-size: 16px; font-weight: bold;
+      background: #2e7d45; color: #fff;
+      padding: 8px 12px; margin: 20px -12px 12px;
+    }
+    #view-report .r-photos { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 12px; }
+    #view-report .r-photos img { width: 140px; height: 140px; object-fit: cover; border: 1px solid #aaa; border-radius: 4px; }
+    #view-report .r-notes {
+      border: 1px solid #ccc; border-radius: 4px; padding: 10px 12px;
+      background: #fafafa; font-size: 15px; white-space: pre-wrap; min-height: 40px;
+    }
+    #view-report .r-url { font-size: 13px; color: #1565c0; word-break: break-all; margin: 4px 0 10px; }
+
+    /* ===== 出力ボタン ===== */
+    #output-btns { margin: 20px 0; }
+
+    /* ===== 印刷 ===== */
+    @media print {
+      #view-form, #output-btns { display: none !important; }
+      #view-report { display: block !important; }
+      #view-report .r-h2 {
+        -webkit-print-color-adjust: exact; print-color-adjust: exact;
+      }
+      body { padding: 0; }
+      #view-report { max-width: 100%; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ===== 入力フォーム ===== -->
+<div id="view-form">
+  <h1>📋 ASR 自動報告書</h1>
+
+  <h2>基本情報</h2>
+
+  <label>現場名</label>
+  <input type="text" id="site-name" placeholder="現場名を入力">
+
+  <label>日付</label>
+  <input type="date" id="work-date">
+
+  <label>作業開始時刻</label>
+  <input type="time" id="start-time">
+
+  <label>作業完了時刻</label>
+  <input type="time" id="end-time">
+
+  <label>担当者名</label>
+  <input type="text" id="worker-name" placeholder="担当者名を入力">
+
+  <label>案件名</label>
+  <input type="text" id="project-name" placeholder="案件名を入力">
+
+  <label>工番</label>
+  <input type="text" id="job-no" placeholder="工番を入力">
+
+  <label>所在地</label>
+  <input type="text" id="location" placeholder="所在地を入力">
+
+  <button class="btn btn-green" id="load-btn" onclick="loadPhotos()">📷 写真を読み込む</button>
+  <div id="load-status" class="status"></div>
+
+  <!-- 写真プレビュー -->
+  <div id="photos-area" style="display:none">
+    <h2>取得した写真</h2>
+    <div class="photo-card">
+      <h3>作業前</h3>
+      <div id="grid-before" class="photo-grid"></div>
+      <a id="link-before" class="album-link" target="_blank" style="display:none">📁 アルバムを開く</a>
+    </div>
+    <div class="photo-card">
+      <h3>作業後</h3>
+      <div id="grid-after" class="photo-grid"></div>
+      <a id="link-after" class="album-link" target="_blank" style="display:none">📁 アルバムを開く</a>
+    </div>
+    <div class="photo-card">
+      <h3>点検</h3>
+      <div id="grid-inspect" class="photo-grid"></div>
+      <a id="link-inspect" class="album-link" target="_blank" style="display:none">📁 アルバムを開く</a>
+    </div>
+  </div>
+
+  <h2>作業内容・特記事項</h2>
+
+  <label>作業内容</label>
+  <textarea id="work-content" placeholder="作業内容を入力"></textarea>
+
+  <label>特記事項</label>
+  <textarea id="remarks" placeholder="特記事項を入力"></textarea>
+
+  <label>次回提案</label>
+  <textarea id="next-plan" placeholder="次回提案を入力"></textarea>
+
+  <button class="btn btn-green" onclick="generateReport()">📄 報告書を作成</button>
+</div>
+
+<!-- ===== 報告書プレビュー ===== -->
+<div id="view-report">
+  <h1>ASR 作業報告書</h1>
+  <p class="r-sub" id="r-sub"></p>
+
+  <table id="r-table"></table>
+
+  <div class="r-h2">作業前写真</div>
+  <div id="r-url-before" class="r-url"></div>
+  <div id="r-photos-before" class="r-photos"></div>
+
+  <div class="r-h2">作業後写真</div>
+  <div id="r-url-after" class="r-url"></div>
+  <div id="r-photos-after" class="r-photos"></div>
+
+  <div class="r-h2">点検写真</div>
+  <div id="r-url-inspect" class="r-url"></div>
+  <div id="r-photos-inspect" class="r-photos"></div>
+
+  <div class="r-h2">作業内容</div>
+  <div id="r-work-content" class="r-notes"></div>
+
+  <div class="r-h2">特記事項</div>
+  <div id="r-remarks" class="r-notes"></div>
+
+  <div class="r-h2">次回提案</div>
+  <div id="r-next-plan" class="r-notes"></div>
+
+  <div id="output-btns">
+    <button class="btn btn-blue" onclick="window.print()">🖨️ 印刷 / PDF保存</button>
+    <button class="btn btn-outline" onclick="backToEdit()">✏️ 編集に戻る</button>
+  </div>
+</div>
+
+<script>
+var GAS_URL = 'https://script.google.com/macros/s/AKfycbxtnLLUlzeMgubyjW4fY9g2Cf2O2yS_P_p1mSOyaXlYUyrul1xm_tDCXVrl-PB3fqYw/exec';
+
+var loadedData = {};
+
+/* 今日の日付をセット */
+(function () {
+  var d = new Date();
+  var pad = function(n) { return ('0' + n).slice(-2); };
+  document.getElementById('work-date').value =
+    d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+})();
+
+/* ===== 写真読み込み ===== */
+async function loadPhotos() {
+  var siteName = document.getElementById('site-name').value.trim();
+  var date     = document.getElementById('work-date').value;
+  var statusEl = document.getElementById('load-status');
+  var btn      = document.getElementById('load-btn');
+
+  if (!siteName || !date) {
+    setStatus(statusEl, 'error', '❌ 現場名と日付を入力してください');
+    return;
+  }
+
+  setStatus(statusEl, 'loading', '⏳ 写真データを取得中...');
+  btn.disabled = true;
+
+  try {
+    var r = await fetch(GAS_URL, {
+      method: 'POST',
+      body: JSON.stringify({ type: 'get_camera_data', siteName: siteName, date: date })
+    });
+    var res = await r.json();
+    console.log('[ASR-AUTO] GASレスポンス:', res);
+
+    if (res.status === 'notfound') {
+      setStatus(statusEl, 'error', '❌ 該当データが見つかりません（現場名・日付を確認してください）');
+      return;
+    }
+    if (res.status !== 'ok') {
+      throw new Error(res.message || 'GASエラー');
+    }
+
+    loadedData = res.data;
+    renderPreview(res.data);
+    setStatus(statusEl, 'ok', '✅ 写真データを取得しました');
+    document.getElementById('photos-area').style.display = 'block';
+
+  } catch (e) {
+    console.error('[ASR-AUTO] エラー:', e);
+    setStatus(statusEl, 'error', '❌ 取得失敗：' + e.message);
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+var CAT_MAP = { '作業前': 'before', '作業後': 'after', '点検': 'inspect' };
+
+function renderPreview(data) {
+  Object.keys(CAT_MAP).forEach(function(cat) {
+    var key     = CAT_MAP[cat];
+    var catData = data[cat];
+    var gridEl  = document.getElementById('grid-' + key);
+    var linkEl  = document.getElementById('link-' + key);
+
+    gridEl.innerHTML = '';
+
+    if (!catData) {
+      gridEl.innerHTML = '<span class="no-data">データなし</span>';
+      return;
+    }
+
+    (catData.photos || []).forEach(function(fileId) {
+      var img = document.createElement('img');
+      img.src = 'https://drive.google.com/thumbnail?id=' + fileId + '&sz=w300';
+      img.alt = cat;
+      img.loading = 'lazy';
+      img.onerror = function() { this.style.display = 'none'; };
+      gridEl.appendChild(img);
+    });
+
+    if (catData.url) {
+      linkEl.href = catData.url;
+      linkEl.style.display = 'inline-block';
+    }
+  });
+}
+
+/* ===== 報告書生成 ===== */
+function generateReport() {
+  var siteName    = v('site-name');
+  var date        = v('work-date');
+  var startTime   = v('start-time');
+  var endTime     = v('end-time');
+  var workerName  = v('worker-name');
+  var projectName = v('project-name');
+  var jobNo       = v('job-no');
+  var location    = v('location');
+  var workContent = v('work-content');
+  var remarks     = v('remarks');
+  var nextPlan    = v('next-plan');
+
+  var timeRange = startTime && endTime
+    ? startTime + ' ～ ' + endTime
+    : startTime || endTime || '—';
+
+  /* サブタイトル */
+  document.getElementById('r-sub').textContent =
+    (siteName || '—') + '　' + (date || '—');
+
+  /* 基本情報テーブル */
+  var rows = [
+    ['現場名',    siteName],
+    ['日付',      date],
+    ['作業時間',  timeRange],
+    ['担当者名',  workerName],
+    ['案件名',    projectName],
+    ['工番',      jobNo],
+    ['所在地',    location]
+  ];
+  var tbl = document.getElementById('r-table');
+  tbl.innerHTML = rows.map(function(r) {
+    return '<tr><th>' + esc(r[0]) + '</th><td>' + esc(r[1]) + '</td></tr>';
+  }).join('');
+
+  /* 写真エリア */
+  Object.keys(CAT_MAP).forEach(function(cat) {
+    var key     = CAT_MAP[cat];
+    var catData = loadedData[cat];
+    var urlEl   = document.getElementById('r-url-' + key);
+    var photoEl = document.getElementById('r-photos-' + key);
+
+    urlEl.innerHTML   = '';
+    photoEl.innerHTML = '';
+
+    if (!catData) {
+      photoEl.innerHTML = '<span class="no-data">データなし</span>';
+      return;
+    }
+
+    if (catData.url) {
+      urlEl.innerHTML = '<a href="' + catData.url + '" target="_blank">' + esc(catData.url) + '</a>';
+    }
+
+    (catData.photos || []).forEach(function(fileId) {
+      var img = document.createElement('img');
+      img.src = 'https://drive.google.com/thumbnail?id=' + fileId + '&sz=w300';
+      img.alt = cat;
+      img.loading = 'lazy';
+      img.onerror = function() { this.style.display = 'none'; };
+      photoEl.appendChild(img);
+    });
+
+    if (!catData.photos || catData.photos.length === 0) {
+      photoEl.innerHTML = '<span class="no-data">写真なし</span>';
+    }
+  });
+
+  /* テキストエリア */
+  document.getElementById('r-work-content').textContent = workContent || '—';
+  document.getElementById('r-remarks').textContent      = remarks     || '—';
+  document.getElementById('r-next-plan').textContent    = nextPlan    || '—';
+
+  /* 表示切替 */
+  document.getElementById('view-form').style.display   = 'none';
+  document.getElementById('view-report').style.display = 'block';
+  window.scrollTo(0, 0);
+}
+
+function backToEdit() {
+  document.getElementById('view-report').style.display = 'none';
+  document.getElementById('view-form').style.display   = 'block';
+}
+
+/* ===== ユーティリティ ===== */
+function v(id) { return (document.getElementById(id).value || '').trim(); }
+
+function esc(s) {
+  return (s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function setStatus(el, type, msg) {
+  el.className = 'status ' + type;
+  el.textContent = msg;
+}
+</script>
+</body>
+</html>

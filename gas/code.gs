@@ -3,6 +3,7 @@
 //  1. 除草作業 完了報告書 -> スプレッドシート（index.html）
 //  2. ASRカメラ 写真一括  -> Googleドライブ保存（camera.html STEP2）
 //  3. ASRカメラ URLのみ  -> スプレッドシート（camera.html STEP3）
+//  4. 写真データ取得     -> ASRカメラシート検索（asr-auto.html）
 // =================================================================
 //
 // デプロイ手順
@@ -44,8 +45,9 @@ function doPost(e) {
   try {
     var data = JSON.parse(e.postData.contents);
     var result;
-    if (data.type === 'camera_upload') { result = uploadPhotosAndGetUrl(data); }
-    else if (data.type === 'camera_asr') { result = saveCameraToSheet(data); }
+    if (data.type === 'camera_upload')    { result = uploadPhotosAndGetUrl(data); }
+    else if (data.type === 'camera_asr')  { result = saveCameraToSheet(data); }
+    else if (data.type === 'get_camera_data') { result = getCameraData(data); }
     else { result = saveReportToSheet(data); }
     return makeJson(result);
   } catch (err) {
@@ -191,6 +193,71 @@ function makeJson(obj) {
   return ContentService
     .createTextOutput(JSON.stringify(obj))
     .setMimeType(ContentService.MimeType.JSON);
+}
+
+// =================================================================
+// 現場名・日付でASRカメラシートを検索してフォルダURL・写真IDを返す
+// （asr-auto.html 用）
+//
+// 受け取るデータ:
+//   { type: "get_camera_data", siteName: "現場名", date: "2026-05-10" }
+//
+// 返却値:
+//   {
+//     status: "ok",
+//     data: {
+//       "作業前": { url: "https://...", photos: ["fileId1", ...] },
+//       "作業後": { url: "https://...", photos: [...] },
+//       "点検":   { url: "https://...", photos: [...] }
+//     }
+//   }
+// =================================================================
+function getCameraData(data) {
+  var siteName = String(data.siteName || '').trim();
+  var date     = String(data.date     || '').trim();
+
+  if (!siteName || !date) {
+    return { status: 'error', message: '現場名と日付が必要です' };
+  }
+
+  var ss    = SpreadsheetApp.openById(SPREADSHEET_ID);
+  var sheet = ss.getSheetByName(CAMERA_SHEET);
+  if (!sheet) return { status: 'notfound', message: 'ASRカメラシートが見つかりません' };
+
+  var rows   = sheet.getDataRange().getValues();
+  var result = {};
+
+  for (var i = 1; i < rows.length; i++) {
+    var rowSite = String(rows[i][0]).trim();
+    var rowDate = String(rows[i][1]).trim();
+    var rowCat  = String(rows[i][2]).trim();
+    var rowUrl  = String(rows[i][3]).trim();
+
+    if (rowSite !== siteName || rowDate !== date || !rowUrl) continue;
+
+    var photos = [];
+    try {
+      var folderId = rowUrl.replace('https://drive.google.com/drive/folders/', '');
+      var folder   = DriveApp.getFolderById(folderId);
+      var files    = folder.getFiles();
+      var count    = 0;
+      while (files.hasNext() && count < 5) {
+        var file = files.next();
+        file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+        photos.push(file.getId());
+        count++;
+      }
+    } catch (e) {
+      Logger.log('フォルダ取得エラー(' + rowCat + '): ' + e.toString());
+    }
+
+    result[rowCat] = { url: rowUrl, photos: photos };
+  }
+
+  if (Object.keys(result).length === 0) {
+    return { status: 'notfound', message: '該当データが見つかりません' };
+  }
+  return { status: 'ok', data: result };
 }
 
 // =================================================================

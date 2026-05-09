@@ -314,3 +314,17 @@ function fixCameraSheetHeader() {
 
   Logger.log('ヘッダーを書き換えました: ' + CAMERA_HEADERS.join(' | '));
 }
+
+function testGetCameraData() {
+  var testData = {
+    postData: {
+      contents: JSON.stringify({
+        type: "get_camera_data",
+        siteName: "てる",
+        date: "2026/05/10"
+      })
+    }
+  };
+  var result = doPost(testData);
+  Logger.log(result.getContent());
+}

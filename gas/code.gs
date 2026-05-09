@@ -113,9 +113,8 @@ function saveCameraToSheet(data) {
     sheet = ss.insertSheet(CAMERA_SHEET);
   }
 
-  if (sheet.getRange(1, 1).getValue() !== CAMERA_HEADERS[0]) {
-    sheet.insertRowBefore(1);
-    sheet.getRange(1, 1, 1, CAMERA_HEADERS.length).setValues([CAMERA_HEADERS]);
+  if (sheet.getLastRow() === 0) {
+    sheet.appendRow(CAMERA_HEADERS);
     sheet.getRange(1, 1, 1, CAMERA_HEADERS.length)
          .setFontWeight('bold')
          .setBackground('#dce8ff');
@@ -216,6 +215,25 @@ function testCameraUpload() {
   };
   try {
     var result = uploadPhotosAndGetUrl(data);
+    Logger.log(JSON.stringify(result));
+  } catch (e) {
+    Logger.log('エラー: ' + e.toString());
+  }
+}
+
+function testCameraAsr() {
+  var data = {
+    type:     'camera_asr',
+    siteName: 'テスト現場',
+    date:     '2026-05-09',
+    modes: [
+      { name: '作業前', url: 'https://drive.google.com/drive/folders/dummy1' },
+      { name: '作業後', url: 'https://drive.google.com/drive/folders/dummy2' },
+      { name: '点検',   url: 'https://drive.google.com/drive/folders/dummy3' }
+    ]
+  };
+  try {
+    var result = saveCameraToSheet(data);
     Logger.log(JSON.stringify(result));
   } catch (e) {
     Logger.log('エラー: ' + e.toString());

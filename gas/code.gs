@@ -113,7 +113,9 @@ function saveCameraToSheet(data) {
     sheet = ss.insertSheet(CAMERA_SHEET);
   }
 
-  if (sheet.getLastRow() === 0) {
+  var a1 = sheet.getRange(1, 1).getValue();
+  if (a1 !== CAMERA_HEADERS[0]) {
+    sheet.clearContents();
     sheet.appendRow(CAMERA_HEADERS);
     sheet.getRange(1, 1, 1, CAMERA_HEADERS.length)
          .setFontWeight('bold')

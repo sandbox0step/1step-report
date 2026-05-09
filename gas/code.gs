@@ -187,14 +187,19 @@ function testDriveAccess() {
   folder.setTrashed(true);
 }
 
-function testDoPost() {
+function testCameraUpload() {
   var testData = {
     postData: {
       contents: JSON.stringify({
-        type: "savePhotos",
+        type: "camera_upload",
         category: "作業前",
         folderName: "テスト_作業前",
-        photos: ["data:image/jpeg;base64,/9j/4AAQ"]
+        photos: [
+          {
+            name: "test.jpg",
+            data: "/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/2wBDAQkJCQwLDBgNDRgyIRwhMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjL/wAARCAABAAEDASIAAhEBAxEB/8QAFAABAAAAAAAAAAAAAAAAAAAACf/EABQQAQAAAAAAAAAAAAAAAAAAAAD/xAAUAQEAAAAAAAAAAAAAAAAAAAAA/8QAFBEBAAAAAAAAAAAAAAAAAAAAAP/aAAwDAQACEQMRAD8AJQAB/9k="
+          }
+        ]
       })
     }
   };

@@ -4,12 +4,16 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>ASR 自動報告書</title>
+
+  <!-- ===== PWA: iPhoneホーム画面アプリ化 ===== -->
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="ASR報告書">
+  <link rel="apple-touch-icon" id="touch-icon">
+  <!-- Web App Manifest（Android / Chrome 対応） -->
+  <link rel="manifest" href="manifest.json">
   <style>
     /* ===== 共通 ===== */
-    * { box-sizing: border-box; }
     body {
       font-family: sans-serif; font-size: 16px; margin: 0; background: #fff;
       padding: 12px;
@@ -19,394 +23,1623 @@
       padding-right:  max(12px, env(safe-area-inset-right));
     }
     h1 { font-size: 20px; margin: 8px 0 16px; }
-    h2 {
-      font-size: 17px; background: #2e7d45; color: #fff;
-      padding: 8px 12px; margin: 20px -12px 12px;
-    }
-    h3 {
-      font-size: 16px; color: #1a5c2a;
-      border-left: 4px solid #2e7d45; padding-left: 8px;
-      margin: 14px 0 6px;
-    }
-    label { display: block; font-weight: bold; margin: 10px 0 4px; font-size: 15px; }
+    h2 { font-size: 17px; background: #2e7d45; color: #fff; padding: 8px 12px; margin: 20px -12px 12px; }
+    h3 { font-size: 16px; color: #1a5c2a; border-left: 4px solid #2e7d45; padding-left: 8px; margin: 14px 0 6px; }
+    label { display: block; font-weight: bold; margin: 10px 0 4px; font-size: 16px; }
     input[type=text],
     input[type=date],
     input[type=time],
+    input[type=password],
     textarea {
       display: block; width: 100%; font-size: 16px;
-      padding: 10px; color: #000; background: #fff;
+      padding: 10px; box-sizing: border-box;
+      color: #000; background: #fff;
       border: 2px solid #333; border-radius: 4px;
     }
     textarea { min-height: 80px; resize: vertical; }
+    input[type=file] { display: block; font-size: 16px; margin: 8px 0; width: 100%; }
 
-    /* ===== ボタン ===== */
-    .btn {
-      display: block; width: 100%; font-size: 17px; font-weight: bold;
-      padding: 14px; margin: 12px 0;
+    /* ===== ログイン画面 ===== */
+    #view-login {
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      min-height: 100svh; padding: 24px; box-sizing: border-box;
+    }
+    .login-box {
+      width: 100%; max-width: 360px;
+      background: #f8fdf9; border: 1px solid #b2d8bc;
+      border-radius: 12px; padding: 32px 24px; box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+    }
+    .login-box .logo {
+      text-align: center; margin-bottom: 28px;
+    }
+    .login-box .logo-icon {
+      font-size: 48px; display: block; margin-bottom: 6px;
+    }
+    .login-box .logo-title {
+      font-size: 18px; font-weight: bold; color: #1a5c2a;
+    }
+    .login-box .logo-sub {
+      font-size: 13px; color: #666; margin-top: 4px;
+    }
+    .login-btn {
+      display: block; width: 100%;
+      font-size: 17px; font-weight: bold;
+      padding: 14px; margin-top: 16px;
+      background: #1a5c2a; color: #fff;
       border: none; border-radius: 8px;
       cursor: pointer; -webkit-appearance: none;
+      box-sizing: border-box;
     }
-    .btn-green  { background: #1a5c2a; color: #fff; }
-    .btn-green:active  { background: #144821; }
-    .btn-blue   { background: #1565c0; color: #fff; }
-    .btn-blue:active   { background: #0d47a1; }
-    .btn-outline { background: #fff; color: #1a5c2a; border: 2px solid #1a5c2a; }
-    .btn:disabled { background: #b0bec5; color: #fff; cursor: not-allowed; border: none; }
+    .login-btn:active { background: #144821; }
+    #login-error {
+      display: none; color: #c0392b;
+      font-size: 14px; text-align: center;
+      margin-top: 12px; font-weight: bold;
+    }
+    #logged-user-badge {
+      display: none;
+      font-size: 13px; color: #555; text-align: right;
+      margin-bottom: 4px;
+    }
 
-    /* ===== ステータス ===== */
-    .status {
-      padding: 10px 12px; border-radius: 6px;
-      font-size: 14px; font-weight: bold; margin: 8px 0;
+    /* ===== 看板テキスト貼り付けエリア ===== */
+    .parse-btn {
+      display: block; width: 100%;
+      font-size: 15px; font-weight: bold;
+      padding: 12px; margin-top: 8px;
+      background: #f9a825; color: #fff;
+      border: none; border-radius: 6px;
+      cursor: pointer; -webkit-appearance: none; box-sizing: border-box;
+    }
+    .field-highlight { background: #fffde7 !important; transition: background 0.3s; }
+
+    /* ===== エリアヘッダー ===== */
+    .area-header {
+      display: flex; align-items: center; justify-content: space-between;
+      background: #2e7d45; color: #fff; padding: 8px 12px; margin: 20px -12px 12px;
+    }
+    .area-header span { font-size: 17px; font-weight: bold; }
+    .area-del-btn {
+      font-size: 13px; padding: 4px 10px;
+      background: #fff; color: #c0392b;
+      border: 1px solid #c0392b; border-radius: 4px;
+      cursor: pointer; -webkit-appearance: none; white-space: nowrap;
+    }
+    .add-area-btn {
+      display: block; width: 100%;
+      font-size: 17px; font-weight: bold;
+      padding: 16px; margin: 8px 0 24px;
+      background: #e8f5ec; color: #1a5c2a;
+      border: 2px dashed #2e7d45; border-radius: 8px;
+      cursor: pointer; -webkit-appearance: none; box-sizing: border-box;
+    }
+
+    /* ===== フォームの写真プレビュー ===== */
+    .prev { display: flex; flex-wrap: wrap; gap: 8px; margin: 6px 0 10px; }
+    .prev-item { position: relative; display: inline-block; }
+    .prev img { width: 120px; height: 120px; object-fit: cover; border: 1px solid #aaa; border-radius: 4px; display: block; }
+
+    .prev-del {
+      position: absolute; top: 0; right: 0;
+      width: 44px; height: 44px;
+      background: rgba(200,0,0,0.85); color: #fff;
+      border: none; border-radius: 0 4px 0 6px;
+      font-size: 20px; font-weight: bold; line-height: 44px; text-align: center;
+      cursor: pointer; -webkit-appearance: none; padding: 0;
+    }
+
+    /* ===== EXIF撮影日時 ===== */
+    .exif-date-display {
+      font-size: 11px; color: #555; margin-top: 3px;
+      text-align: center; word-break: break-all;
+    }
+    .exif-note {
+      font-size: 10px; color: #bbb; margin: 3px 0 0;
+      line-height: 1.5; word-break: break-all;
+    }
+    .exif-date-manual {
+      font-size: 12px !important; padding: 4px 6px !important;
+      margin-top: 3px !important; border-width: 1px !important;
       display: none;
     }
-    .status.loading { display: block; background: #e3f2fd; color: #1565c0; border: 1px solid #90caf9; }
-    .status.ok      { display: block; background: #e8f5ec; color: #1a5c2a; border: 1px solid #a5d6a7; }
-    .status.error   { display: block; background: #fdecea; color: #c0392b; border: 1px solid #ef9a9a; }
 
-    /* ===== 写真エリア ===== */
-    .photo-card {
-      background: #f8fdf9; border: 1px solid #b2d8bc;
-      border-radius: 8px; padding: 12px; margin: 10px 0;
+    /* ===== 生成ボタン ===== */
+    .gen-btn {
+      display: block; width: 100%;
+      font-size: 20px; font-weight: bold;
+      padding: 22px; margin: 24px 0;
+      background: #1a5c2a; color: #fff;
+      border: none; border-radius: 8px;
+      cursor: pointer; -webkit-appearance: none; box-sizing: border-box;
     }
-    .photo-card h3 { margin-top: 0; }
-    .photo-grid {
-      display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0;
-    }
-    .photo-grid img {
-      width: calc(33.33% - 4px); aspect-ratio: 4/3;
-      object-fit: cover; border: 1px solid #ccc; border-radius: 4px;
-      background: #eee;
-    }
-    .album-link {
-      display: inline-block; margin-top: 6px;
-      color: #1565c0; font-size: 14px; word-break: break-all;
-    }
-    .no-data { color: #999; font-size: 14px; }
 
-    /* ===== 報告書プレビュー ===== */
-    #view-report { display: none; }
-    #view-report h1 { text-align: center; font-size: 22px; margin: 16px 0 4px; }
-    #view-report .r-sub { text-align: center; color: #555; font-size: 14px; margin-bottom: 20px; }
-    #view-report table { width: 100%; border-collapse: collapse; margin-bottom: 14px; }
-    #view-report th { background: #e8f5ec; border: 1px solid #aaa; padding: 8px 10px; font-size: 15px; width: 38%; white-space: nowrap; vertical-align: top; }
-    #view-report td { border: 1px solid #aaa; padding: 8px 10px; font-size: 15px; vertical-align: top; }
+    /* ===== 完了バナー ===== */
+    #done-banner {
+      display: none;
+      background: #1a6ed8; color: #fff;
+      font-size: 16px; font-weight: bold;
+      padding: 16px; text-align: center;
+      line-height: 1.7;
+      position: sticky; top: 0; z-index: 100;
+    }
+    #back-btn {
+      display: none;
+      font-size: 15px; padding: 10px 20px;
+      background: #fff; color: #1a5c2a;
+      border: 2px solid #1a5c2a; border-radius: 6px;
+      cursor: pointer; -webkit-appearance: none;
+      margin: 12px 0;
+    }
+    #pdf-btn {
+      display: none;
+      font-size: 15px; font-weight: bold; padding: 10px 20px;
+      background: #1565c0; color: #fff;
+      border: none; border-radius: 6px;
+      cursor: pointer; -webkit-appearance: none;
+      margin: 0 0 12px; width: 100%; box-sizing: border-box;
+    }
+    #pdf-btn:disabled { background: #90a4ae; cursor: not-allowed; }
+    #pdf-preview-btn {
+      display: none;
+      font-size: 15px; font-weight: bold; padding: 10px 20px;
+      background: #fff; color: #1565c0;
+      border: 2px solid #1565c0; border-radius: 6px;
+      cursor: pointer; -webkit-appearance: none;
+      margin: 0 0 6px; width: 100%; box-sizing: border-box;
+    }
+    #pdf-preview-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    #sheets-btn {
+      display: none;
+      font-size: 15px; font-weight: bold; padding: 10px 20px;
+      background: #1e8e3e; color: #fff;
+      border: none; border-radius: 6px;
+      cursor: pointer; -webkit-appearance: none;
+      margin: 0 0 6px; width: 100%; box-sizing: border-box;
+    }
+    #sheets-btn:disabled { background: #90a4ae; cursor: not-allowed; }
+    #sheets-msg {
+      display: none;
+      font-size: 14px; font-weight: bold; text-align: center;
+      padding: 8px 12px; border-radius: 6px; margin-bottom: 8px;
+    }
+    #sheets-msg.ok  { background: #e8f5ec; color: #1a5c2a; border: 1px solid #a5d6a7; }
+    #sheets-msg.err { background: #fdecea; color: #c0392b; border: 1px solid #ef9a9a; }
+
+    /* ===== 改ページコントロール ===== */
+    .page-break-ctrl {
+      position: relative; height: 0; overflow: visible;
+      margin: 0; text-align: center; z-index: 5;
+    }
+    .pb-btn {
+      position: absolute; left: 50%; transform: translateX(-50%);
+      top: -13px;
+      font-size: 11px; padding: 3px 12px;
+      background: #f5f5f5; color: #aaa;
+      border: 1px dashed #ccc; border-radius: 10px;
+      cursor: pointer; -webkit-appearance: none; white-space: nowrap;
+    }
+    .page-break-ctrl.active .pb-btn {
+      background: #fff8e1; color: #e65100;
+      border: 1px solid #ffb300; font-weight: bold;
+    }
+    .page-break-ctrl.active::before {
+      content: ''; position: absolute; left: -12px; right: -12px; top: 0;
+      border-top: 3px dashed #ffb300; z-index: 4;
+    }
+    .page-break-ctrl.active::after {
+      content: '✂ 改ページ ✂';
+      position: absolute; left: 50%; top: 3px;
+      transform: translateX(-50%);
+      font-size: 10px; color: #e65100;
+      background: #fff8e1; padding: 0 8px;
+      white-space: nowrap; pointer-events: none; z-index: 6;
+    }
+    @media print { .page-break-ctrl { display: none !important; } }
+
+    /* ===== 報告書ビュー ===== */
+    #view-report { display: none; max-width: 720px; margin: 0 auto; padding: 0 8px 40px; }
+
+    #view-report h1 { font-size: 22px; text-align: center; margin: 20px 0 4px; }
+    #view-report .r-client { text-align: center; color: #555; margin-bottom: 20px; font-size: 15px; }
+
+    #view-report table { width: 100%; border-collapse: collapse; margin-bottom: 16px; }
+    #view-report th, #view-report td { border: 1px solid #aaa; padding: 8px 10px; font-size: 15px; vertical-align: top; }
+    #view-report th { background: #e8f5ec; width: 36%; white-space: nowrap; }
+
     #view-report .r-h2 {
       font-size: 16px; font-weight: bold;
       background: #2e7d45; color: #fff;
-      padding: 8px 12px; margin: 20px -12px 12px;
+      padding: 8px 12px; margin: 24px 0 12px;
     }
-    #view-report .r-photos { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 12px; }
+    #view-report .r-h3 {
+      font-size: 15px; color: #1a5c2a;
+      border-left: 4px solid #2e7d45; padding-left: 8px;
+      margin: 14px 0 6px;
+    }
+
+    #view-report .r-photos { display: flex; flex-wrap: wrap; gap: 8px; margin: 6px 0 12px; }
     #view-report .r-photos img { width: 140px; height: 140px; object-fit: cover; border: 1px solid #aaa; border-radius: 4px; }
+    #view-report .no-photo { color: #999; font-size: 14px; margin: 4px 0 12px; }
+
     #view-report .r-notes {
-      border: 1px solid #ccc; border-radius: 4px; padding: 10px 12px;
-      background: #fafafa; font-size: 15px; white-space: pre-wrap; min-height: 40px;
+      border: 1px solid #ccc; border-radius: 4px;
+      padding: 10px 12px; background: #fafafa;
+      font-size: 15px; white-space: pre-wrap; min-height: 40px;
+      margin-bottom: 12px;
     }
-    #view-report .r-url { font-size: 13px; color: #1565c0; word-break: break-all; margin: 4px 0 10px; }
 
-    /* ===== 出力ボタン ===== */
-    #output-btns { margin: 20px 0; }
-
-    /* ===== 印刷 ===== */
+    /* A4印刷用 */
     @media print {
-      #view-form, #output-btns { display: none !important; }
-      #view-report { display: block !important; }
+      #done-banner, #back-btn { display: none !important; }
+      body { padding: 0; margin: 0; }
+      #view-report { max-width: 100%; padding: 0; }
       #view-report .r-h2 {
+        background: #2e7d45 !important; color: #fff !important;
         -webkit-print-color-adjust: exact; print-color-adjust: exact;
       }
-      body { padding: 0; }
-      #view-report { max-width: 100%; }
     }
   </style>
 </head>
 <body>
 
-<!-- ===== 入力フォーム ===== -->
-<div id="view-form">
-  <h1>📋 ASR 自動報告書</h1>
+<!-- ===== ログイン画面 ===== -->
+<div id="view-login">
+  <div class="login-box">
+    <div class="logo">
+      <span class="logo-icon" id="login-icon">🌿</span>
+      <div class="logo-title">ASR 自動報告書</div>
+      <div class="logo-sub">ログインしてください</div>
+    </div>
+    <label for="login-pass">パスワード</label>
+    <input type="password" id="login-pass" placeholder="パスワードを入力" autocomplete="current-password"
+           onkeydown="if(event.key==='Enter')doLogin()">
+    <button class="login-btn" onclick="doLogin()">ログイン</button>
+    <div id="login-error">パスワードが正しくありません</div>
+  </div>
+</div>
+
+<!-- ===== 完了バナー（生成後に表示） ===== -->
+<div id="done-banner">
+  【完了】「📄 PDFで保存」ボタンからPDFを出力してLINEなどで共有できます
+</div>
+
+<!-- ===== フォームビュー ===== -->
+<div id="view-form" style="display:none;">
+
+  <div id="logged-user-badge"></div>
+  <h1>ASR 自動報告書</h1>
 
   <h2>基本情報</h2>
-
-  <label>現場名</label>
-  <input type="text" id="site-name" placeholder="現場名を入力">
-
-  <label>日付</label>
-  <input type="date" id="work-date">
-
-  <label>作業開始時刻</label>
-  <input type="time" id="start-time">
-
-  <label>作業完了時刻</label>
-  <input type="time" id="end-time">
-
-  <label>担当者名</label>
-  <input type="text" id="worker-name" placeholder="担当者名を入力">
-
   <label>案件名</label>
-  <input type="text" id="project-name" placeholder="案件名を入力">
+  <input type="text" id="f-project" placeholder="例：○○住宅地 除草管理作業">
 
-  <label>工番</label>
-  <input type="text" id="job-no" placeholder="工番を入力">
+  <label>提出先（クライアント名）</label>
+  <input type="text" id="f-client" placeholder="例：合同会社 SUNDAY driver &amp; co.">
+  <label>作業日</label>
+  <input type="date" id="f-date">
+  <label>天候 / 気温</label>
+  <input type="text" id="f-weather" placeholder="例：晴れ / 22℃">
+  <label>作業時間帯</label>
+  <div style="display:flex;align-items:center;gap:8px;">
+    <input type="time" id="f-time-start" style="width:auto;flex:1;display:inline-block;">
+    <span style="font-size:16px;white-space:nowrap;">〜</span>
+    <input type="time" id="f-time-end" style="width:auto;flex:1;display:inline-block;">
+  </div>
+  <label>作業人数</label>
+  <input type="text" id="f-workers" placeholder="例：3名">
+  <label>担当者名（ログイン名）</label>
+  <input type="text" id="f-staff" placeholder="例：山田 太郎" readonly style="background:#f0f8f0;">
 
-  <label>所在地</label>
-  <input type="text" id="location" placeholder="所在地を入力">
-
-  <button class="btn btn-green" id="load-btn" onclick="loadPhotos()">📷 写真を読み込む</button>
-  <div id="load-status" class="status"></div>
-
-  <!-- 写真プレビュー -->
-  <div id="photos-area" style="display:none">
-    <h2>取得した写真</h2>
-    <div class="photo-card">
-      <h3>作業前</h3>
-      <div id="grid-before" class="photo-grid"></div>
-      <a id="link-before" class="album-link" target="_blank" style="display:none">📁 アルバムを開く</a>
+  <h2>現場スペック（コピペで自動入力）</h2>
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:10px;">
+    <div>
+      <label style="margin:0 0 4px;font-size:14px;">① 看板写真</label>
+      <div id="prev-sign" class="prev" data-exif-target="exif-date-sign"></div>
+      <div id="exif-date-sign" class="exif-date-display" style="display:none;"></div>
+      <input type="text" id="exif-manual-sign" class="exif-date-manual" placeholder="2025年4月24日 14:30">
+      <input type="file" id="sign-file" accept="image/*" style="display:none"
+        onchange="handleFileSelect(this,'prev-sign',1,null,'exif-date-sign')">
+      <button type="button" onclick="document.getElementById('sign-file').click()"
+        style="display:block;width:100%;padding:8px 4px;font-size:12px;background:#e8f5ec;color:#1a5c2a;border:2px dashed #2e7d45;border-radius:6px;cursor:pointer;-webkit-appearance:none;box-sizing:border-box;">
+        📷 選択
+      </button>
     </div>
-    <div class="photo-card">
-      <h3>作業後</h3>
-      <div id="grid-after" class="photo-grid"></div>
-      <a id="link-after" class="album-link" target="_blank" style="display:none">📁 アルバムを開く</a>
+    <div>
+      <label style="margin:0 0 4px;font-size:14px;">② 全景（作業前）</label>
+      <div id="prev-before" class="prev" data-exif-target="exif-date-before"></div>
+      <div id="exif-date-before" class="exif-date-display" style="display:none;"></div>
+      <input type="text" id="exif-manual-before" class="exif-date-manual" placeholder="2025年4月24日 14:30">
+      <input type="file" id="before-file" accept="image/*" style="display:none"
+        onchange="handleFileSelect(this,'prev-before',1,null,'exif-date-before')">
+      <button type="button" onclick="document.getElementById('before-file').click()"
+        style="display:block;width:100%;padding:8px 4px;font-size:12px;background:#e8f5ec;color:#1a5c2a;border:2px dashed #2e7d45;border-radius:6px;cursor:pointer;-webkit-appearance:none;box-sizing:border-box;">
+        📷 選択
+      </button>
     </div>
-    <div class="photo-card">
-      <h3>点検</h3>
-      <div id="grid-inspect" class="photo-grid"></div>
-      <a id="link-inspect" class="album-link" target="_blank" style="display:none">📁 アルバムを開く</a>
+    <div>
+      <label style="margin:0 0 4px;font-size:14px;">③ 全景（作業後）</label>
+      <div id="prev-after" class="prev" data-exif-target="exif-date-after"></div>
+      <div id="exif-date-after" class="exif-date-display" style="display:none;"></div>
+      <input type="text" id="exif-manual-after" class="exif-date-manual" placeholder="2025年4月24日 14:30">
+      <input type="file" id="after-file" accept="image/*" style="display:none"
+        onchange="handleFileSelect(this,'prev-after',1,null,'exif-date-after')">
+      <button type="button" onclick="document.getElementById('after-file').click()"
+        style="display:block;width:100%;padding:8px 4px;font-size:12px;background:#e8f5ec;color:#1a5c2a;border:2px dashed #2e7d45;border-radius:6px;cursor:pointer;-webkit-appearance:none;box-sizing:border-box;">
+        📷 選択
+      </button>
     </div>
   </div>
+  <p style="font-size:10px;color:#bbb;margin:0 0 10px;text-align:right;line-height:1.6;">※ 撮影日時はカメラのEXIF情報より自動取得（改ざんなし）</p>
 
-  <h2>作業内容・特記事項</h2>
-
-  <label>作業内容</label>
-  <textarea id="work-content" placeholder="作業内容を入力"></textarea>
-
-  <label>特記事項</label>
-  <textarea id="remarks" placeholder="特記事項を入力"></textarea>
-
-  <label>次回提案</label>
-  <textarea id="next-plan" placeholder="次回提案を入力"></textarea>
-
-  <button class="btn btn-green" onclick="generateReport()">📄 報告書を作成</button>
-</div>
-
-<!-- ===== 報告書プレビュー ===== -->
-<div id="view-report">
-  <h1>ASR 作業報告書</h1>
-  <p class="r-sub" id="r-sub"></p>
-
-  <table id="r-table"></table>
-
-  <div class="r-h2">作業前写真</div>
-  <div id="r-url-before" class="r-url"></div>
-  <div id="r-photos-before" class="r-photos"></div>
-
-  <div class="r-h2">作業後写真</div>
-  <div id="r-url-after" class="r-url"></div>
-  <div id="r-photos-after" class="r-photos"></div>
-
-  <div class="r-h2">点検写真</div>
-  <div id="r-url-inspect" class="r-url"></div>
-  <div id="r-photos-inspect" class="r-photos"></div>
-
-  <div class="r-h2">作業内容</div>
-  <div id="r-work-content" class="r-notes"></div>
-
-  <div class="r-h2">特記事項</div>
-  <div id="r-remarks" class="r-notes"></div>
-
-  <div class="r-h2">次回提案</div>
-  <div id="r-next-plan" class="r-notes"></div>
-
-  <div id="output-btns">
-    <button class="btn btn-blue" onclick="window.print()">🖨️ 印刷 / PDF保存</button>
-    <button class="btn btn-outline" onclick="backToEdit()">✏️ 編集に戻る</button>
+  <div style="background:#fffbf0;border:2px solid #f9a825;border-radius:8px;padding:12px 14px;margin:0 0 10px;font-size:15px;line-height:1.8;color:#555;">
+    看板写真をタップして拡大し、文字を確認 → iPhoneの「写真」アプリで長押しコピー →<br>下の欄に貼り付けてボタンを押す
   </div>
-</div>
+  <textarea id="sign-paste" style="min-height:160px;font-size:16px;" placeholder="ここに貼り付ける（改行ごとに複数行OK）" onpaste="setTimeout(parsePastedText, 80)" onchange="parsePastedText()"></textarea>
+  <button type="button" class="parse-btn" onclick="parsePastedText()">↓ 名称・工番・所在地に自動振り分け</button>
 
+  <label style="margin-top:16px;">① 名称（現場名称）</label>
+  <input type="text" id="f-name" placeholder="例：○○太陽光発電所">
+  <label>② 工番（設備ID / 管理番号）</label>
+  <input type="text" id="f-jobno" placeholder="例：JOB-2026-001">
+  <label>③ 所在地（施工地・現場所在地）</label>
+  <input type="text" id="f-location" placeholder="例：○○県○○市○○町1-2-3">
+  <button type="button" onclick="if(confirm('写真・貼り付け欄・名称・工番・所在地をすべてクリアしますか？'))resetSiteFields()" style="margin-top:6px;padding:6px 16px;font-size:14px;background:#fff;color:#888;border:1px solid #bbb;border-radius:4px;cursor:pointer;">↺ この欄をすべてクリア</button>
+
+  <!-- ===== ASRカメラ 写真自動読み込み ===== -->
+  <h2>ASRカメラ 写真自動読み込み</h2>
+  <p style="font-size:14px;color:#555;margin:0 0 10px;line-height:1.6;">
+    名称（現場名称）と作業日を入力後、ボタンを押すと撮影済みの作業前・作業後・点検写真が自動反映されます。<br>
+    手動での写真追加も引き続き可能です。
+  </p>
+  <button type="button" id="auto-load-btn" onclick="loadCameraPhotos()"
+    style="display:block;width:100%;font-size:16px;font-weight:bold;padding:14px;background:#1565c0;color:#fff;border:none;border-radius:8px;cursor:pointer;-webkit-appearance:none;box-sizing:border-box;margin:8px 0;">
+    📷 写真を読み込む（ASRカメラ）
+  </button>
+  <div id="auto-load-status" style="display:none;padding:10px 12px;border-radius:6px;font-size:14px;font-weight:bold;margin:8px 0;"></div>
+  <div id="auto-album-links" style="display:none;background:#f0f8ff;border:1px solid #90caf9;border-radius:8px;padding:12px;margin:8px 0 0;">
+    <div style="font-weight:bold;font-size:14px;color:#1565c0;margin-bottom:8px;">📁 取得したアルバムURL</div>
+    <div id="album-link-before" style="margin:4px 0;display:none;font-size:14px;"></div>
+    <div id="album-link-after"  style="margin:4px 0;display:none;font-size:14px;"></div>
+    <div id="album-link-other"  style="margin:4px 0;display:none;font-size:14px;"></div>
+  </div>
+
+  <div id="areas-container"></div>
+  <button type="button" class="add-area-btn" onclick="addArea()">＋ エリアを追加</button>
+
+  <h2>その他点検箇所</h2>
+  <div id="prev-other" class="prev"></div>
+  <input type="file" id="other-file" accept="image/*" multiple style="display:none"
+    onchange="handleFileSelect(this,'prev-other',15)">
+  <button type="button" onclick="document.getElementById('other-file').click()"
+    style="display:block;width:100%;padding:12px;font-size:15px;background:#e8f5ec;color:#1a5c2a;border:2px dashed #2e7d45;border-radius:6px;cursor:pointer;-webkit-appearance:none;box-sizing:border-box;margin-bottom:6px;">
+    📷 写真を選択（最大15枚）
+  </button>
+  <label>所見・気づいた点</label>
+  <textarea id="f-other-notes" placeholder="その他点検箇所での所見を記入してください"></textarea>
+
+  <h2>備考</h2>
+  <label>備考・連絡事項</label>
+  <textarea id="f-remarks" placeholder="例：散布後2時間は立入禁止"></textarea>
+  <label>共有リンクURL（iCloud / Googleフォト）</label>
+  <input type="text" id="f-icloud" placeholder="https://www.icloud.com/photos/... または https://photos.google.com/...">
+
+  <!-- 生成ボタン -->
+  <input type="button" class="gen-btn" value="報告書を生成" onclick="generateReport()">
+
+</div><!-- /view-form -->
+
+
+<!-- ===== 報告書ビュー（生成後に表示） ===== -->
+<input type="button" id="back-btn" value="← 入力画面に戻る" onclick="backToForm()">
+<input type="button" id="pdf-preview-btn" value="🔍 プレビュー" onclick="previewPdf()">
+<input type="button" id="pdf-btn" value="📄 PDFで保存" onclick="generatePdf()">
+<input type="button" id="sheets-btn" value="📊 スプレッドシートに送信" onclick="sendToSheet()">
+<div id="sheets-msg"></div>
+<div id="view-report"></div>
+
+
+
+<!-- ===== JavaScript ===== -->
 <script>
+/* =====================================================
+   パスワード管理
+   外注先を追加するときはここにエントリーを足すだけ：
+   { pass: "パスワード", name: "表示名" }
+   ===================================================== */
+var USERS = [
+  { pass: "1step2026", name: "管理者" }
+  /* 追加例：
+  ,{ pass: "gaityuu2026", name: "外注先A" }
+  ,{ pass: "partner9999", name: "外注先B" }
+  */
+];
+
+/* =====================================================
+   Google Sheets 連携URL
+   GASをデプロイ後、取得したウェブアプリURLをここに設定
+   設定手順は gas/code.gs のコメントを参照
+   ===================================================== */
+var SHEET_URL = ''; /* ← 自動送信用GASデプロイURL（未使用時は空のまま） */
+
+/* =====================================================
+   スプレッドシート送信ボタン用 GAS URL
+   ===================================================== */
 var GAS_URL = 'https://script.google.com/macros/s/AKfycbxtnLLUlzeMgubyjW4fY9g2Cf2O2yS_P_p1mSOyaXlYUyrul1xm_tDCXVrl-PB3fqYw/exec';
 
-var loadedData = {};
+function buildWorkTime() {
+  var s = val('f-time-start');
+  var e = val('f-time-end');
+  if (s && e) return s + '〜' + e;
+  if (s) return s + '〜';
+  if (e) return '〜' + e;
+  return '';
+}
 
-/* 今日の日付をセット */
-(function () {
-  var d = new Date();
-  var pad = function(n) { return ('0' + n).slice(-2); };
-  document.getElementById('work-date').value =
-    d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
-})();
+/* ログイン処理 */
+function doLogin() {
+  var input = document.getElementById('login-pass').value;
+  var matched = null;
+  for (var i = 0; i < USERS.length; i++) {
+    if (USERS[i].pass === input) { matched = USERS[i]; break; }
+  }
+  if (!matched) {
+    document.getElementById('login-error').style.display = 'block';
+    document.getElementById('login-pass').value = '';
+    document.getElementById('login-pass').focus();
+    return;
+  }
+  /* ログイン成功 */
+  document.getElementById('view-login').style.display = 'none';
+  document.getElementById('view-form').style.display  = 'block';
+  document.getElementById('f-staff').value            = matched.name;
+  var badge = document.getElementById('logged-user-badge');
+  badge.textContent = 'ログイン中：' + matched.name;
+  badge.style.display = 'block';
+  initLocalStorage();
+}
 
-/* ===== 写真読み込み ===== */
-async function loadPhotos() {
-  var siteName = document.getElementById('site-name').value.trim();
-  var date     = document.getElementById('work-date').value;
-  var statusEl = document.getElementById('load-status');
-  var btn      = document.getElementById('load-btn');
+/* ファイル1枚をプレビューボックスに追加 */
+function addFilePreview(file, box) {
+  var src = URL.createObjectURL(file);
+  var wrap = document.createElement('div');
+  wrap.className = 'prev-item';
+  var img = document.createElement('img');
+  img.src = src;
+  img.title = 'タップで拡大';
+  img.style.cursor = 'pointer';
+  img.onclick = (function(u) { return function() { window.open(u, '_blank'); }; })(src);
+  var btn = document.createElement('button');
+  btn.className = 'prev-del';
+  btn.textContent = '×';
+  btn.onclick = function() {
+    wrap.remove();
+    var exifTarget = box.dataset && box.dataset.exifTarget;
+    if (exifTarget && box.querySelectorAll('.prev-item').length === 0) {
+      hideExifDate(exifTarget);
+    }
+  };
+  wrap.appendChild(img);
+  wrap.appendChild(btn);
+  box.appendChild(wrap);
+}
+
+/* URLからプレビューを追加 */
+function addUrlPreview(url, box) {
+  var wrap = document.createElement('div');
+  wrap.className = 'prev-item';
+  var img = document.createElement('img');
+  img.src = url;
+  img.title = 'タップで拡大';
+  img.style.cursor = 'pointer';
+  img.onclick = (function(u) { return function() { window.open(u, '_blank'); }; })(url);
+  var btn = document.createElement('button');
+  btn.className = 'prev-del';
+  btn.textContent = '×';
+  btn.onclick = function() {
+    wrap.remove();
+    var exifTarget = box.dataset && box.dataset.exifTarget;
+    if (exifTarget && box.querySelectorAll('.prev-item').length === 0) {
+      hideExifDate(exifTarget);
+    }
+  };
+  wrap.appendChild(img);
+  wrap.appendChild(btn);
+  box.appendChild(wrap);
+}
+
+/* URL入力欄からプレビュー追加（上限maxCount枚）
+   autoExtractId: 全景写真欄が空なら1枚目を自動コピー */
+function addUrlFromInput(inputId, prevId, maxCount, autoExtractId) {
+  var input = document.getElementById(inputId);
+  if (!input) return;
+  var url = input.value.trim();
+  if (!url) return;
+  if (!/^https?:\/\//.test(url)) {
+    alert('URLはhttp://またはhttps://で始めてください');
+    return;
+  }
+  var box = document.getElementById(prevId);
+  if (!box) return;
+  var current = box.querySelectorAll('.prev-item').length;
+  if (current >= maxCount) {
+    alert('写真は最大' + maxCount + '枚まで選択できます（現在' + current + '枚）');
+    return;
+  }
+  var wasEmpty = (current === 0);
+  addUrlPreview(url, box);
+  if (wasEmpty && autoExtractId) {
+    var extractBox = document.getElementById(autoExtractId);
+    if (extractBox && extractBox.querySelectorAll('.prev-item').length === 0) {
+      addUrlPreview(url, extractBox);
+    }
+  }
+  input.value = '';
+}
+
+/* ファイル選択 → プレビュー追加（上限maxCount枚）
+   autoExtractId: 初回追加時に全景写真欄が空なら1枚目を自動コピー
+   exifDivId: EXIF撮影日時を表示するdivのID */
+function handleFileSelect(input, prevId, maxCount, autoExtractId, exifDivId) {
+  var box = document.getElementById(prevId);
+  if (!box) return;
+  var current = box.querySelectorAll('.prev-item').length;
+  var files = Array.from(input.files);
+  var remaining = maxCount - current;
+  if (remaining <= 0) {
+    alert('写真は最大' + maxCount + '枚まで選択できます（現在' + current + '枚）');
+    input.value = '';
+    return;
+  }
+  var toAdd = files.slice(0, remaining);
+  var wasEmpty = (current === 0);
+  toAdd.forEach(function(file) { addFilePreview(file, box); });
+  if (wasEmpty && autoExtractId && toAdd.length > 0) {
+    var extractBox = document.getElementById(autoExtractId);
+    if (extractBox && extractBox.querySelectorAll('.prev-item').length === 0) {
+      addFilePreview(toAdd[0], extractBox);
+      /* 全景写真欄への自動コピー時にもEXIF日時を読み取る */
+      (function(f, aid) {
+        var eid = 'exif-date-' + aid.replace('prev-', '');
+        if (document.getElementById(eid)) {
+          readExifDate(f, function(d) { showExifDate(eid, d); });
+        }
+      })(toAdd[0], autoExtractId);
+    }
+  }
+  /* 直接アップロード時のEXIF日時読み取り */
+  if (exifDivId && wasEmpty && toAdd.length > 0) {
+    readExifDate(toAdd[0], function(d) { showExifDate(exifDivId, d); });
+  }
+  input.value = '';
+}
+
+/* 現場スペック全クリア（3枚写真・貼り付け欄・名称工番所在地・localStorage） */
+function resetSiteFields() {
+  ['f-name', 'f-jobno', 'f-location'].forEach(function(id) {
+    var el = document.getElementById(id);
+    if (el) { el.value = ''; el.classList.remove('field-highlight'); }
+  });
+  var sp = document.getElementById('sign-paste');
+  if (sp) sp.value = '';
+  ['sign', 'before', 'after'].forEach(function(id) {
+    var pv = document.getElementById('prev-' + id);
+    if (pv) pv.innerHTML = '';
+  });
+  hideExifDate('exif-date-sign');
+  hideExifDate('exif-date-before');
+  hideExifDate('exif-date-after');
+  localStorage.removeItem('site_name');
+  localStorage.removeItem('site_jobno');
+  localStorage.removeItem('site_location');
+}
+
+/* ===== テキスト貼り付け → 自動振り分け ===== */
+
+function normalizeStr(str) {
+  return str
+    .replace(/[Ａ-Ｚａ-ｚ０-９！-～]/g, function(c) { return String.fromCharCode(c.charCodeAt(0) - 0xFEE0); })
+    .replace(/　/g, ' ').replace(/：/g, ':').replace(/（/g, '(').replace(/）/g, ')');
+}
+
+function extractSiteInfo(rawText) {
+  var text  = normalizeStr(rawText);
+  var lines = text.split('\n').map(function(l) { return l.trim(); }).filter(Boolean);
+
+  var companyRe   = /株式会社|有限会社|合同会社|支店|営業所|本社|所有者|保全管理|施工業者/;
+  var nameExclude = /株式会社|有限会社|合同会社|支店|営業所|様|殿|御中|所有者|保全管理|施工業者/;
+  var addressRe   = /[市区町村郡]|番地|丁目|[0-9]+番[0-9]*号/;
+  /* 都道府県名または市/区/町/村で「始まる」行（先頭一致） */
+  var prefStart   = /^(東京都|北海道|(?:大阪|京都)府|.{2,3}県|[市区町村])/;
+  var allLabels   = /施工地|所在地|設置場所|工事場所|現場住所|住所|工事名|現場名|発電所名|施設名|名称|工番|管理番号|設備.?ID|No\.|№|番号/;
+
+  var result = { name: null, jobno: null, location: null };
+
+  console.log('Parse: start (' + lines.length + ' lines)');
+  lines.forEach(function(l, i) { console.log('  [' + i + '] ' + l); });
+
+  function valueAfterLabel(labelRe, excludeRe) {
+    for (var i = 0; i < lines.length; i++) {
+      var line = lines[i];
+      if (!labelRe.test(line)) continue;
+      if (excludeRe && excludeRe.test(line)) continue;
+      var after = line.replace(labelRe, '').replace(/^[\s：:=　\t]+/, '').trim();
+      var stop  = after.search(allLabels);
+      if (stop > 0) after = after.substring(0, stop).trim();
+      if (after.length > 0 && !(excludeRe && excludeRe.test(after))) {
+        console.log('  Extract: same-line "' + line + '" → "' + after + '"');
+        return after;
+      }
+      var next = lines[i + 1] || '';
+      if (next && !allLabels.test(next) && !(excludeRe && excludeRe.test(next))) {
+        console.log('  Extract: next-line "' + line + '" → "' + next + '"');
+        return next;
+      }
+    }
+    return null;
+  }
+
+  /* ===== 名称 ===== */
+  /* 優先①: 末尾が「発電所」で終わる行 */
+  for (var i = 0; i < lines.length; i++) {
+    if (/発電所$/.test(lines[i]) && !nameExclude.test(lines[i])) {
+      result.name = lines[i];
+      console.log('Name: ' + result.name + ' (Reason: 末尾が発電所なので名称にセットしました)');
+      break;
+    }
+  }
+  /* 優先②: ラベル直後の値 */
+  if (!result.name) {
+    var nameRaw = valueAfterLabel(/工事名|現場名|発電所名|施設名|名称/, nameExclude);
+    if (nameRaw && !nameExclude.test(nameRaw)) {
+      result.name = nameRaw;
+      console.log('Name: ' + result.name + ' (Reason: ラベル直後の値)');
+    }
+  }
+  /* 優先③: スコアリングフォールバック */
+  if (!result.name) {
+    var nameCands = lines.filter(function(l) {
+      return !nameExclude.test(l) && !companyRe.test(l) &&
+             !addressRe.test(l)   && !prefStart.test(l) &&
+             !(allLabels.test(l) && l.replace(allLabels, '').trim() === '') &&
+             l.length > 2;
+    });
+    if (nameCands.length > 0) {
+      nameCands.sort(function(a, b) {
+        function sc(s) {
+          var v = s.length;
+          if (/発電所|太陽光|メガソーラー|PV/.test(s)) v += 100;
+          if (/工事/.test(s)) v += 50;
+          return v;
+        }
+        return sc(b) - sc(a);
+      });
+      result.name = nameCands[0];
+      console.log('Name: ' + result.name + ' (Reason: スコア最高行)');
+    }
+  }
+
+  /* ===== 工番① キーワードベース ===== */
+  var jobRaw = valueAfterLabel(/工番|管理番号|設備.?ID|No\.|№|番号/);
+  if (jobRaw) {
+    var jCode = jobRaw.match(/^([A-Za-z0-9][A-Za-z0-9\-\/]*)/);
+    result.jobno = jCode ? jCode[1] : jobRaw;
+    console.log('JobNo: ' + result.jobno + ' (Reason: ラベル直後の英数字)');
+  }
+  /* ===== 工番② 日本語を含まない英数字+記号の塊をスキャン ===== */
+  if (!result.jobno) {
+    var dateRe = /^\d{4}[-\/]\d{1,2}[-\/]\d{1,2}$/;
+    var phoneRe = /^\d{2,4}-\d{3,4}-\d{4}$/;
+    var jpRe   = /[^\x00-\x7F\-\/]/; /* 日本語文字を含む判定 */
+    /* 行全体が日本語なしかつコード形式 */
+    for (var ji = 0; ji < lines.length; ji++) {
+      var ln = lines[ji];
+      if (jpRe.test(ln)) continue; /* 日本語を含む行はスキップ */
+      var codeRe = /([A-Za-z0-9][A-Za-z0-9\-\/]{2,})/g;
+      var found; codeRe.lastIndex = 0;
+      while ((found = codeRe.exec(ln)) !== null) {
+        var c = found[1];
+        if (!dateRe.test(c) && !phoneRe.test(c)) {
+          result.jobno = c;
+          console.log('JobNo: ' + c + ' (Reason: 日本語を含まない英数字コード from "' + ln + '")');
+          break;
+        }
+      }
+      if (result.jobno) break;
+    }
+  }
+  /* ===== 工番③ 全行から英数混在パターンをスキャン（最終手段） ===== */
+  if (!result.jobno) {
+    var dateRe2  = /^\d{4}[-\/]\d{1,2}[-\/]\d{1,2}$/;
+    var phoneRe2 = /^\d{2,4}-\d{3,4}-\d{4}$/;
+    var codeRe2  = /\b([A-Za-z]{1,8}[-\/]?[0-9]{2,}[A-Za-z0-9\-\/]*|[0-9]{2,}[-\/][A-Za-z][A-Za-z0-9\-\/]*|[A-Za-z]{2,}[0-9]{2,}[A-Za-z0-9\-\/]*)\b/g;
+    outer:
+    for (var li = 0; li < lines.length; li++) {
+      var f2; codeRe2.lastIndex = 0;
+      while ((f2 = codeRe2.exec(lines[li])) !== null) {
+        var c2 = f2[1];
+        if (c2.length >= 3 && !dateRe2.test(c2) && !phoneRe2.test(c2)) {
+          result.jobno = c2;
+          console.log('JobNo: ' + c2 + ' (Reason: 英数混在コード from "' + lines[li] + '")');
+          break outer;
+        }
+      }
+    }
+  }
+
+  /* ===== 所在地① ラベルマッチ ===== */
+  var locRaw = valueAfterLabel(/施工地|所在地|設置場所|工事場所|現場住所|住所/, companyRe);
+  if (locRaw && !companyRe.test(locRaw) && locRaw !== result.name) {
+    result.location = locRaw;
+    console.log('Location: ' + result.location + ' (Reason: ラベル直後の値)');
+  }
+  /* ===== 所在地②【消去法】都道府県名 or 市/区/町/村から始まり、末尾が「発電所」でない行 ===== */
+  if (!result.location) {
+    for (var k = 0; k < lines.length; k++) {
+      var kl = lines[k];
+      if (!prefStart.test(kl)) continue;       /* 地名始点でない → スキップ */
+      if (/発電所$/.test(kl)) continue;         /* 末尾が発電所 → 名称なのでスキップ */
+      if (companyRe.test(kl)) continue;         /* 会社名を含む → スキップ */
+      if (kl === result.name) continue;          /* 既に名称として採用済み → スキップ */
+      result.location = kl;
+      console.log('Location: ' + result.location + ' (Reason: 地名から始まり発電所で終わらないため所在地と判断しました)');
+      break;
+    }
+  }
+  /* ===== 所在地③ 市区町村・番地フォールバック ===== */
+  if (!result.location) {
+    for (var m = 0; m < lines.length; m++) {
+      var al = lines[m];
+      if (addressRe.test(al) && !companyRe.test(al) && al !== result.name) {
+        result.location = al;
+        console.log('Location: ' + result.location + ' (Reason: 市/町/番地を含む行)');
+        break;
+      }
+    }
+  }
+
+  console.log('Result: ' + JSON.stringify(result));
+  return result;
+}
+
+function setField(id, value) {
+  var el = document.getElementById(id);
+  if (!el || !value) return;
+  el.value = value;
+  el.dispatchEvent(new Event('input'));
+  el.classList.add('field-highlight');
+  setTimeout(function() { el.classList.remove('field-highlight'); }, 2500);
+}
+
+function parsePastedText() {
+  var ta   = document.getElementById('sign-paste');
+  var text = ta.value;
+  if (!text.trim() || text.indexOf('✅') === 0 || text.indexOf('⚠️') === 0) return;
+
+  var result = extractSiteInfo(text);
+  var filled = [], missing = [];
+
+  if (result.name)     { setField('f-name',     result.name);     filled.push('名称'); }
+  else                 { missing.push('名称'); }
+  if (result.jobno)    { setField('f-jobno',     result.jobno);    filled.push('工番'); }
+  else                 { missing.push('工番'); }
+  if (result.location) { setField('f-location',  result.location); filled.push('所在地'); }
+  else                 { missing.push('所在地'); }
+
+  if (filled.length > 0 && missing.length === 0) {
+    ta.value = '✅ ' + filled.join('・') + ' を反映しました';
+  } else if (filled.length > 0) {
+    ta.value = '✅ ' + filled.join('・') + ' を反映 ／ ⚠️ ' + missing.join('・') + ' は手入力してください';
+  } else {
+    ta.value = '⚠️ 自動判別できませんでした。各欄を手入力してください。';
+  }
+  setTimeout(function() {
+    var v = ta.value;
+    if (v.indexOf('✅') === 0 || v.indexOf('⚠️') === 0) ta.value = '';
+  }, 4000);
+}
+
+/* ===== EXIF撮影日時読み取り ===== */
+
+/* JPEGバイナリからDateTimeOriginal(0x9003)またはDateTime(0x0132)を取得 */
+function readExifDate(file, callback) {
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      var buf  = e.target.result;
+      var view = new DataView(buf);
+      if (view.getUint16(0) !== 0xFFD8) { callback(null); return; }
+      var offset = 2;
+      while (offset < buf.byteLength - 4) {
+        var marker = view.getUint16(offset);
+        offset += 2;
+        if (marker === 0xFFE1) {
+          var segLen = view.getUint16(offset);
+          /* "Exif\0\0" チェック */
+          if (view.getUint32(offset + 2) === 0x45786966 && view.getUint16(offset + 6) === 0x0000) {
+            var ts  = offset + 8; /* TIFFヘッダ先頭 */
+            var le  = (view.getUint16(ts) === 0x4949);
+            var ifd = ts + view.getUint32(ts + 4, le);
+            var n   = view.getUint16(ifd, le);
+            var dateStr = null, exifPtr = null;
+            for (var i = 0; i < n; i++) {
+              var ep  = ifd + 2 + i * 12;
+              var tag = view.getUint16(ep, le);
+              if (tag === 0x8769) exifPtr = ts + view.getUint32(ep + 8, le);
+              if (tag === 0x0132) {
+                var vo = ts + view.getUint32(ep + 8, le);
+                var s  = '';
+                for (var j = 0; j < 19; j++) { var c = view.getUint8(vo + j); if (!c) break; s += String.fromCharCode(c); }
+                dateStr = s;
+              }
+            }
+            if (exifPtr) {
+              var ne = view.getUint16(exifPtr, le);
+              for (var i = 0; i < ne; i++) {
+                var ep  = exifPtr + 2 + i * 12;
+                var tag = view.getUint16(ep, le);
+                if (tag === 0x9003) {
+                  var vo = ts + view.getUint32(ep + 8, le);
+                  var s  = '';
+                  for (var j = 0; j < 19; j++) { var c = view.getUint8(vo + j); if (!c) break; s += String.fromCharCode(c); }
+                  dateStr = s;
+                  break;
+                }
+              }
+            }
+            if (dateStr) {
+              var m = dateStr.match(/^(\d{4}):(\d{2}):(\d{2}) (\d{2}):(\d{2})/);
+              if (m) {
+                callback(m[1] + '年' + parseInt(m[2]) + '月' + parseInt(m[3]) + '日 ' + m[4] + ':' + m[5]);
+                return;
+              }
+            }
+          }
+          offset += segLen;
+        } else if (marker === 0xFFDA) {
+          break;
+        } else {
+          if (offset + 2 > buf.byteLength) break;
+          offset += view.getUint16(offset);
+        }
+      }
+      callback(null);
+    } catch (ex) { callback(null); }
+  };
+  reader.onerror = function() { callback(null); };
+  reader.readAsArrayBuffer(file.slice(0, 65536));
+}
+
+/* EXIF日時を表示divに反映。dateStrがnullなら手動入力欄を表示 */
+function showExifDate(divId, dateStr) {
+  var display = document.getElementById(divId);
+  var manualId = divId.replace('exif-date-', 'exif-manual-');
+  var manual = document.getElementById(manualId);
+  if (!display) return;
+  if (dateStr) {
+    display.textContent  = '撮影日時：' + dateStr;
+    display.style.display = '';
+    if (manual) manual.style.display = 'none';
+  } else {
+    display.textContent  = '';
+    display.style.display = 'none';
+    if (manual) manual.style.display = 'block';
+  }
+}
+
+/* 写真削除時にEXIF表示・手動入力欄を両方隠す */
+function hideExifDate(divId) {
+  var display = document.getElementById(divId);
+  var manualId = divId.replace('exif-date-', 'exif-manual-');
+  var manual = document.getElementById(manualId);
+  if (display) { display.textContent = ''; display.style.display = 'none'; }
+  if (manual)  { manual.value = ''; manual.style.display = 'none'; }
+}
+
+/* 報告書生成時に表示中の撮影日時テキストを取得 */
+function getExifDisplayDate(divId, manualId) {
+  var display = document.getElementById(divId);
+  if (display && display.style.display !== 'none' && display.textContent) {
+    return display.textContent.replace('撮影日時：', '');
+  }
+  var manual = document.getElementById(manualId);
+  if (manual && manual.style.display !== 'none' && manual.value.trim()) {
+    return manual.value.trim();
+  }
+  return null;
+}
+
+/* ===== localStorage 自動保存・読み込み ===== */
+var SAVE_MAP = { 'f-name': 'site_name', 'f-jobno': 'site_jobno', 'f-location': 'site_location' };
+
+function initLocalStorage() {
+  Object.keys(SAVE_MAP).forEach(function(id) {
+    var el  = document.getElementById(id);
+    var key = SAVE_MAP[id];
+    var saved = localStorage.getItem(key);
+    if (saved && el) el.value = saved;
+    if (el) {
+      el.addEventListener('input', function() {
+        localStorage.setItem(key, el.value);
+      });
+    }
+  });
+}
+
+/* エリア管理 */
+var areaCounter = 0;
+
+function addArea() {
+  areaCounter++;
+  var id = areaCounter;
+  /* エリア1のみ全景写真へ自動反映。エリア2以降は反映しない */
+  var autoB = (id === 1) ? ",'prev-before'" : '';
+  var autoA = (id === 1) ? ",'prev-after'" : '';
+  var container = document.getElementById('areas-container');
+  var div = document.createElement('div');
+  div.id = 'area-block-' + id;
+  div.innerHTML =
+    '<div class="area-header">' +
+      '<span>エリア' + id + '</span>' +
+      '<button type="button" class="area-del-btn" onclick="deleteArea(' + id + ')">このエリアを削除</button>' +
+    '</div>' +
+    '<h3>草刈り作業前（Before）</h3>' +
+    '<div id="prev-fi' + id + 'b" class="prev"></div>' +
+    '<input type="file" id="file-fi' + id + 'b" accept="image/*" multiple style="display:none" onchange="handleFileSelect(this,\'prev-fi' + id + 'b\',5' + autoB + ')">' +
+    '<button type="button" onclick="document.getElementById(\'file-fi' + id + 'b\').click()" style="display:block;width:100%;padding:10px;font-size:14px;background:#e8f5ec;color:#1a5c2a;border:2px dashed #2e7d45;border-radius:6px;cursor:pointer;-webkit-appearance:none;box-sizing:border-box;margin-bottom:6px;">📷 写真を選択（最大5枚）</button>' +
+    '<h3>草刈り作業後（After）</h3>' +
+    '<div id="prev-fi' + id + 'a" class="prev"></div>' +
+    '<input type="file" id="file-fi' + id + 'a" accept="image/*" multiple style="display:none" onchange="handleFileSelect(this,\'prev-fi' + id + 'a\',5' + autoA + ')">' +
+    '<button type="button" onclick="document.getElementById(\'file-fi' + id + 'a\').click()" style="display:block;width:100%;padding:10px;font-size:14px;background:#e8f5ec;color:#1a5c2a;border:2px dashed #2e7d45;border-radius:6px;cursor:pointer;-webkit-appearance:none;box-sizing:border-box;margin-bottom:6px;">📷 写真を選択（最大5枚）</button>' +
+    '<h3>除草剤散布後（現状）</h3>' +
+    '<div id="prev-fi' + id + 'h" class="prev"></div>' +
+    '<input type="file" id="file-fi' + id + 'h" accept="image/*" multiple style="display:none" onchange="handleFileSelect(this,\'prev-fi' + id + 'h\',5)">' +
+    '<button type="button" onclick="document.getElementById(\'file-fi' + id + 'h\').click()" style="display:block;width:100%;padding:10px;font-size:14px;background:#e8f5ec;color:#1a5c2a;border:2px dashed #2e7d45;border-radius:6px;cursor:pointer;-webkit-appearance:none;box-sizing:border-box;margin-bottom:6px;">📷 写真を選択（最大5枚）</button>' +
+    '<label>異常箇所写真</label>' +
+    '<div id="prev-fi' + id + 'n" class="prev"></div>' +
+    '<input type="file" id="file-fi' + id + 'n" accept="image/*" multiple style="display:none" onchange="handleFileSelect(this,\'prev-fi' + id + 'n\',5)">' +
+    '<button type="button" onclick="document.getElementById(\'file-fi' + id + 'n\').click()" style="display:block;width:100%;padding:10px;font-size:14px;background:#e8f5ec;color:#1a5c2a;border:2px dashed #2e7d45;border-radius:6px;cursor:pointer;-webkit-appearance:none;box-sizing:border-box;margin-bottom:6px;">📷 写真を選択（最大5枚）</button>' +
+    '<label>所見・気づいた点</label>' +
+    '<textarea id="notes-' + id + '" placeholder="エリア' + id + 'で気づいた点を記入してください"></textarea>';
+  container.appendChild(div);
+}
+
+function deleteArea(id) {
+  var el = document.getElementById('area-block-' + id);
+  if (el) el.remove();
+}
+
+
+/* フォームの値を取得 */
+function val(id) {
+  var e = document.getElementById(id);
+  return (e && e.value) ? e.value.trim() : '';
+}
+
+/* プレビューから写真HTML */
+function photoHtml(prevId) {
+  var box = document.getElementById(prevId);
+  var imgs = box ? box.querySelectorAll('.prev-item img') : [];
+  if (!imgs.length) {
+    return '<p class="no-photo">（写真なし）</p>';
+  }
+  var h = '<div class="r-photos">';
+  for (var i = 0; i < imgs.length; i++) {
+    h += '<img src="' + imgs[i].src + '">';
+  }
+  return h + '</div>';
+}
+
+/* ===== データ一元管理：報告書データ構造 ===== */
+function buildReportData() {
+  var areaBlocks = document.querySelectorAll('#areas-container [id^="area-block-"]');
+  var areas = [];
+  areaBlocks.forEach(function(block) {
+    var k = block.id.replace('area-block-', '');
+    areas.push({
+      areaId:          k,
+      photosBefore:    document.querySelectorAll('#prev-fi' + k + 'b .prev-item img').length,
+      photosAfter:     document.querySelectorAll('#prev-fi' + k + 'a .prev-item img').length,
+      photosHerb:      document.querySelectorAll('#prev-fi' + k + 'h .prev-item img').length,
+      photosAbnormal:  document.querySelectorAll('#prev-fi' + k + 'n .prev-item img').length,
+      notes:           val('notes-' + k)
+    });
+  });
+  return {
+    generatedAt: new Date().toISOString(),
+    project:     val('f-project'),
+    siteName:    val('f-name'),
+    jobNo:       val('f-jobno'),
+    location:    val('f-location'),
+    client:      val('f-client'),
+    date:        val('f-date'),
+    weather:     val('f-weather'),
+    workTime:    buildWorkTime(),
+    workers:     val('f-workers'),
+    staff:       val('f-staff'),
+    areas:       areas,
+    otherPhotos: document.querySelectorAll('#prev-other .prev-item img').length,
+    otherNotes:  val('f-other-notes'),
+    remarks:     val('f-remarks'),
+    icloudUrl:   val('f-icloud')
+  };
+}
+
+/* ===== Google Sheets 送信 =====
+   SHEET_URL（スクリプト上部）にGASデプロイURLを設定すると有効になる
+   ============================== */
+function sendToSpreadsheet(data) {
+  if (!SHEET_URL) return;
+  fetch(SHEET_URL, {
+    method:  'POST',
+    headers: { 'Content-Type': 'text/plain' },
+    body:    JSON.stringify(data)
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(j) {
+    if (j.status === 'ok') {
+      console.log('[Sheets] 送信完了');
+    } else {
+      console.warn('[Sheets] サーバーエラー:', j.message);
+    }
+  })
+  .catch(function(err) { console.warn('[Sheets] 送信失敗:', err); });
+}
+
+/* 写真プレビューから最初の1枚のsrcを取得 */
+function firstPhotoSrc(prevId) {
+  var box = document.getElementById(prevId);
+  if (!box) return null;
+  var img = box.querySelector('img');
+  return img ? img.src : null;
+}
+
+/* 報告書用：ラベル付き写真セル（なしの場合はグレー枠）
+   dateStr: 撮影日時文字列（省略可） */
+function photoGridCell(label, src, dateStr) {
+  var s = '<div style="text-align:center;">';
+  s += '<div style="font-weight:bold;font-size:13px;color:#1a5c2a;margin-bottom:6px;">' + label + '</div>';
+  if (src) {
+    s += '<img src="' + src + '" style="width:100%;max-height:180px;object-fit:cover;border:1px solid #aaa;border-radius:4px;cursor:pointer;display:block;" onclick="window.open(this.src,\'_blank\')">';
+    s += '<div style="font-size:11px;color:#888;margin-top:2px;">クリックで拡大</div>';
+    if (dateStr) {
+      s += '<div style="font-size:11px;color:#555;margin-top:3px;">撮影：' + dateStr + '</div>';
+    }
+  } else {
+    s += '<div style="height:80px;background:#f5f5f5;border:1px dashed #ccc;border-radius:4px;display:flex;align-items:center;justify-content:center;color:#bbb;font-size:13px;">（なし）</div>';
+  }
+  s += '</div>';
+  return s;
+}
+
+/* 報告書を生成して画面を切り替える */
+function generateReport() {
+  var reportData = buildReportData();
+  sendToSpreadsheet(reportData);
+
+  var proj = val('f-project')  || '（案件名未入力）';
+  var name = val('f-name')    || '　';
+  var jobno= val('f-jobno')   || '　';
+  var loc  = val('f-location')|| '　';
+  var cli  = val('f-client')  || '　';
+  var dt   = val('f-date')    || '　';
+  var wt   = val('f-weather') || '　';
+  var tm   = buildWorkTime() || '　';
+  var wk   = val('f-workers') || '　';
+  var st   = val('f-staff')   || '　';
+
+  var h = '';
+
+  h += '<h1>' + proj + '</h1>';
+  h += '<p class="r-client">' + cli + ' 御中</p>';
+
+  h += '<div class="r-h2">1. 作業概要</div>';
+  h += '<table>';
+  h += '<tr><th>案件名</th><td>' + proj + '</td></tr>';
+  h += '<tr><th>名称（現場名称）</th><td>' + name + '</td></tr>';
+  h += '<tr><th>工番 / 管理番号</th><td>' + jobno + '</td></tr>';
+  h += '<tr><th>所在地</th><td>' + loc  + '</td></tr>';
+  h += '<tr><th>提出先</th><td>' + cli  + '</td></tr>';
+  h += '<tr><th>作業日</th><td>' + dt   + '</td></tr>';
+  h += '<tr><th>天候 / 気温</th><td>' + wt + '</td></tr>';
+  h += '<tr><th>作業時間帯</th><td>' + tm + '</td></tr>';
+  h += '<tr><th>作業人数</th><td>' + wk  + '</td></tr>';
+  h += '<tr><th>担当者</th><td>' + st   + '</td></tr>';
+  h += '</table>';
+
+  h += '<div class="r-h2">2. 現場写真</div>';
+  h += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin:12px 0;">';
+  h += photoGridCell('① 看板写真',      firstPhotoSrc('prev-sign'),   getExifDisplayDate('exif-date-sign',   'exif-manual-sign'));
+  h += photoGridCell('② 全景（作業前）', firstPhotoSrc('prev-before'), getExifDisplayDate('exif-date-before', 'exif-manual-before'));
+  h += photoGridCell('③ 全景（作業後）', firstPhotoSrc('prev-after'),  getExifDisplayDate('exif-date-after',  'exif-manual-after'));
+  h += '</div>';
+  h += '<p style="font-size:10px;color:#bbb;margin:4px 0 8px;text-align:right;line-height:1.6;">※ 撮影日時はカメラのEXIF情報より自動取得（改ざんなし）</p>';
+  h += pbCtrl('spec');
+
+  h += '<div class="r-h2">3. エリア別 作業記録</div>';
+  var areaBlocks = document.querySelectorAll('#areas-container [id^="area-block-"]');
+  for (var a = 0; a < areaBlocks.length; a++) {
+    var k = areaBlocks[a].id.replace('area-block-', '');
+    h += '<div class="r-h3">エリア' + k + '</div>';
+    h += '<b>作業前（Before）</b>' + photoHtml('prev-fi' + k + 'b');
+    h += '<b>作業後（After）</b>'  + photoHtml('prev-fi' + k + 'a');
+    h += '<b>除草剤散布後</b>'     + photoHtml('prev-fi' + k + 'h');
+    h += '<b>異常箇所写真</b>'     + photoHtml('prev-fi' + k + 'n');
+    h += '<b>所見</b>';
+    h += '<div class="r-notes">' + (val('notes-' + k) || '（所見なし）') + '</div>';
+    h += pbCtrl('area-' + k);
+  }
+  if (!areaBlocks.length) {
+    h += '<p class="no-photo">（エリアなし）</p>';
+  }
+
+  h += '<div class="r-h2">4. その他点検箇所</div>';
+  h += '<b>点検写真</b>' + photoHtml('prev-other');
+  h += '<b>所見</b>';
+  h += '<div class="r-notes">' + (val('f-other-notes') || '（記載なし）') + '</div>';
+  h += pbCtrl('other');
+
+  h += '<div class="r-h2">5. 備考・連絡事項</div>';
+  h += '<div class="r-notes">' + (val('f-remarks') || '特になし') + '</div>';
+
+  var iu = val('f-icloud');
+  if (iu) {
+    h += '<div style="margin:16px 0;padding:12px;border:1px solid #2e7d45;border-radius:6px;">';
+    h += '<b>共有リンク：</b><br>';
+    h += '<a href="' + iu + '" style="color:#1a5c2a;word-break:break-all;">' + iu + '</a>';
+    h += '</div>';
+  }
+  h += pbCtrl('remarks');
+
+  h += '<div style="text-align:right;margin-top:32px;font-size:14px;color:#555;">担当者：' + st + '</div>';
+  h += '<p style="text-align:center;color:#bbb;font-size:13px;margin-top:24px;">以上</p>';
+
+  document.getElementById('view-report').innerHTML = h;
+  document.getElementById('view-form').style.display   = 'none';
+  document.getElementById('view-report').style.display = 'block';
+  document.getElementById('done-banner').style.display = 'block';
+  document.getElementById('back-btn').style.display        = 'block';
+  document.getElementById('pdf-preview-btn').style.display = 'block';
+  document.getElementById('pdf-btn').style.display         = 'block';
+  document.getElementById('sheets-btn').style.display      = 'block';
+  window.scrollTo(0, 0);
+}
+
+/* ===== スプレッドシート送信 ===== */
+async function sendToSheet() {
+  var btn = document.getElementById('sheets-btn');
+  var msg = document.getElementById('sheets-msg');
+  btn.disabled = true;
+  btn.value    = '送信中...';
+  msg.style.display = 'none';
+  msg.className     = '';
+
+  /* 各フィールドに null/undefined が入らないよう安全に取得 */
+  function sv(id) {
+    try {
+      var e = document.getElementById(id);
+      return (e && e.value != null) ? String(e.value).trim() : '';
+    } catch (ex) { return ''; }
+  }
+
+  var payload = {
+    workDate:    sv('f-date'),
+    projectName: sv('f-project'),
+    workerName:  sv('f-staff'),
+    siteName:    sv('f-name'),
+    siteId:      sv('f-jobno'),
+    location:    sv('f-location'),
+    workTime:    (buildWorkTime() || ''),
+    workerCount: sv('f-workers'),
+    weather:     sv('f-weather'),
+    remarks:     sv('f-remarks'),
+    shareLink:   sv('f-icloud')
+  };
+
+  /* 15秒タイムアウト */
+  var controller = new AbortController();
+  var timer = setTimeout(function() { controller.abort(); }, 15000);
+
+  try {
+    /* no-corsモード：SafariなどモバイルブラウザのCORSエラーを回避
+       opaque レスポンスになるためレスポンス本体は読めない。
+       fetch が例外なく完了した＝送信成功とみなす。 */
+    await fetch(GAS_URL, {
+      method:  'POST',
+      mode:    'no-cors',
+      headers: { 'Content-Type': 'text/plain' },
+      body:    JSON.stringify(payload),
+      signal:  controller.signal
+    });
+    clearTimeout(timer);
+
+    msg.textContent = '✅ 送信しました！';
+    msg.className   = 'ok';
+  } catch (e) {
+    clearTimeout(timer);
+    msg.textContent = '❌ 送信に失敗しました';
+    msg.className   = 'err';
+  } finally {
+    btn.disabled = false;
+    btn.value    = '📊 スプレッドシートに送信';
+    msg.style.display = 'block';
+  }
+}
+
+/* 入力画面に戻る */
+function backToForm() {
+  document.getElementById('view-report').style.display     = 'none';
+  document.getElementById('done-banner').style.display     = 'none';
+  document.getElementById('back-btn').style.display        = 'none';
+  document.getElementById('pdf-preview-btn').style.display = 'none';
+  document.getElementById('pdf-btn').style.display         = 'none';
+  document.getElementById('sheets-btn').style.display      = 'none';
+  document.getElementById('sheets-msg').style.display      = 'none';
+  document.getElementById('view-form').style.display       = 'block';
+  _pdfCanvas = null;
+  window.scrollTo(0, 0);
+}
+
+/* ===== PDF生成 ===== */
+
+/* 改ページコントロール HTML 生成 */
+function pbCtrl(id) {
+  return '<div class="page-break-ctrl" id="pb-' + id + '">' +
+    '<button type="button" class="pb-btn" onclick="togglePageBreak(\'' + id + '\')">' +
+    'ここで改ページ</button></div>';
+}
+
+/* 改ページトグル */
+function togglePageBreak(id) {
+  var el = document.getElementById('pb-' + id);
+  if (!el) return;
+  var nowActive = !el.classList.contains('active');
+  el.classList.toggle('active');
+  var btn = el.querySelector('.pb-btn');
+  if (btn) btn.textContent = nowActive ? 'ここで改ページ（タップで解除）' : 'ここで改ページ';
+  _pdfCanvas = null;
+}
+
+/* キャッシュ済みcanvas */
+var _pdfCanvas = null;
+
+/* jsPDF・html2canvas をクリック時に動的ロード */
+function loadPdfLibs() {
+  if (window.html2canvas && window.jspdf) return Promise.resolve();
+  function loadScript(src) {
+    return new Promise(function(resolve, reject) {
+      var s = document.createElement('script');
+      s.src = src;
+      s.onload = resolve;
+      s.onerror = function() { reject(new Error('読み込み失敗: ' + src)); };
+      document.head.appendChild(s);
+    });
+  }
+  return loadScript('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js')
+    .then(function() {
+      return loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
+    });
+}
+
+/* PDF オブジェクトを構築して返す（preview / save 共通） */
+async function buildPdf(statusCb) {
+  var reportEl = document.getElementById('view-report');
+  /* A4換算の固定キャプチャ幅。スマホでは reportEl がビューポート幅で
+     描画されるため pxToMm がデバイスごとに変わり、ページ境界がズレる。
+     常に720px固定でレイアウト→キャプチャすることで機種差をなくす。 */
+  var PDF_W = 720;
+
+  await loadPdfLibs();
+  if (statusCb) statusCb('PDF生成中...');
+
+  /* ① A4換算の固定幅を強制適用してリフロー待ち */
+  var savedW    = reportEl.style.width;
+  var savedMinW = reportEl.style.minWidth;
+  var savedMaxW = reportEl.style.maxWidth;
+  reportEl.style.width    = PDF_W + 'px';
+  reportEl.style.minWidth = PDF_W + 'px';
+  reportEl.style.maxWidth = PDF_W + 'px';
+
+  window.scrollTo(0, 0);
+  await new Promise(function(r) { setTimeout(r, 200); });
+
+  /* ② canvas キャプチャ前に位置を計測
+        html2canvas はキャプチャ中にスクロールを変えるため、
+        キャプチャ後に getBoundingClientRect() を呼ぶと座標がズレる */
+  var contRect = reportEl.getBoundingClientRect();
+
+  var breakYsPx = [];
+  reportEl.querySelectorAll('.page-break-ctrl.active').forEach(function(el) {
+    var r = el.getBoundingClientRect();
+    var relY = r.top - contRect.top;
+    if (relY > 0) breakYsPx.push(relY);
+  });
+  breakYsPx.sort(function(a, b) { return a - b; });
+
+  var linkData = [];
+  reportEl.querySelectorAll('a[href]').forEach(function(a) {
+    var url = a.href;
+    if (!url || url.indexOf('javascript') === 0) return;
+    var ar = a.getBoundingClientRect();
+    linkData.push({
+      url:  url,
+      relX: ar.left - contRect.left,
+      relY: ar.top  - contRect.top,
+      w:    Math.max(a.offsetWidth,  10),
+      h:    Math.max(a.offsetHeight,  5)
+    });
+  });
+
+  /* ③ pb-btn を非表示にしてキャプチャ */
+  var pbBtns = reportEl.querySelectorAll('.pb-btn');
+  pbBtns.forEach(function(b) { b.style.visibility = 'hidden'; });
+
+  var SCALE = 2;
+  if (!_pdfCanvas) {
+    _pdfCanvas = await html2canvas(reportEl, {
+      scale:           SCALE,
+      useCORS:         true,
+      allowTaint:      true,
+      logging:         false,
+      backgroundColor: '#ffffff',
+      windowWidth:     PDF_W   /* メディアクエリなどにも一貫した幅を渡す */
+    });
+  }
+  var canvas = _pdfCanvas;
+
+  pbBtns.forEach(function(b) { b.style.visibility = ''; });
+
+  /* ④ キャプチャ完了後にスタイルを元に戻す */
+  reportEl.style.width    = savedW;
+  reportEl.style.minWidth = savedMinW;
+  reportEl.style.maxWidth = savedMaxW;
+
+  /* ⑤ jsPDF 初期化 */
+  var jsPDF  = window.jspdf.jsPDF;
+  var pdf    = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+
+  var pageW  = pdf.internal.pageSize.getWidth();   /* 210mm */
+  var pageH  = pdf.internal.pageSize.getHeight();  /* 297mm */
+  var margin = 10;
+  var contW  = pageW - margin * 2;  /* 190mm */
+  var contH  = pageH - margin * 2;  /* 277mm */
+
+  var cssW     = canvas.width  / SCALE;  /* CSS幅px */
+  var cssH     = canvas.height / SCALE;  /* CSS高px */
+  var pxToMm   = contW / cssW;           /* px→mm変換率 */
+  var totalHmm = cssH * pxToMm;
+
+  /* ⑥ 改ページ位置をmmに変換してページスライス一覧を生成
+        改ページボタンの位置でセクションを区切り、
+        各セクションが A4 を超える場合は自然に複数ページに分割する */
+  var breakYsMm = breakYsPx.map(function(py) { return py * pxToMm; });
+
+  var sectionStarts = [0].concat(breakYsMm);
+  var pageSlices = [];  /* [{ startMm, endMm }] */
+
+  for (var si = 0; si < sectionStarts.length; si++) {
+    var secStart = sectionStarts[si];
+    var secEnd   = (si + 1 < sectionStarts.length) ? sectionStarts[si + 1] : totalHmm;
+    var secH     = secEnd - secStart;
+    var numPg    = Math.max(1, Math.ceil(secH / contH));
+    for (var p = 0; p < numPg; p++) {
+      pageSlices.push({
+        startMm: secStart + p * contH,
+        endMm:   Math.min(secStart + (p + 1) * contH, secEnd)
+      });
+    }
+  }
+
+  /* ⑦ 各ページを canvas のスライスで描画（フル画像オフセットではなく切り出し） */
+  for (var pi = 0; pi < pageSlices.length; pi++) {
+    if (pi > 0) pdf.addPage();
+    var ps   = pageSlices[pi];
+    var srcY = Math.round(ps.startMm / pxToMm * SCALE);
+    var srcH = Math.round((ps.endMm - ps.startMm) / pxToMm * SCALE);
+    if (srcH < 1) srcH = 1;
+
+    var sc  = document.createElement('canvas');
+    sc.width  = canvas.width;
+    sc.height = srcH;
+    var ctx   = sc.getContext('2d');
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, sc.width, sc.height);
+    ctx.drawImage(canvas, 0, srcY, canvas.width, srcH, 0, 0, canvas.width, srcH);
+
+    var sliceHmm = (srcH / SCALE) * pxToMm;
+    pdf.addImage(sc.toDataURL('image/jpeg', 0.85), 'JPEG', margin, margin, contW, sliceHmm);
+  }
+
+  /* ⑧ 共有リンクURLをクリッカブルアノテーションとして追加 */
+  linkData.forEach(function(ld) {
+    var lxMm = margin + ld.relX * pxToMm;
+    var lyMm = ld.relY * pxToMm;
+    var lwMm = ld.w * pxToMm;
+    var lhMm = ld.h * pxToMm;
+
+    for (var pi = 0; pi < pageSlices.length; pi++) {
+      var ps = pageSlices[pi];
+      if (lyMm >= ps.startMm && lyMm < ps.endMm) {
+        pdf.setPage(pi + 1);
+        pdf.link(lxMm, margin + (lyMm - ps.startMm), lwMm, lhMm, { url: ld.url });
+        break;
+      }
+    }
+  });
+
+  return pdf;
+}
+
+/* プレビュー：BlobURLを新タブで開く */
+async function previewPdf() {
+  var preBtn = document.getElementById('pdf-preview-btn');
+  var pdfBtn = document.getElementById('pdf-btn');
+  preBtn.disabled = true;
+  pdfBtn.disabled = true;
+  preBtn.value = 'プレビュー生成中...';
+  try {
+    var pdf = await buildPdf(function(msg) { preBtn.value = msg; });
+    var blob = pdf.output('blob');
+    var url  = URL.createObjectURL(blob);
+    window.open(url, '_blank');
+  } catch (e) {
+    console.error('プレビューエラー:', e);
+    alert('プレビュー生成に失敗しました。\nネットワーク接続を確認してください。');
+  } finally {
+    preBtn.disabled = false;
+    pdfBtn.disabled = false;
+    preBtn.value = '🔍 プレビュー';
+  }
+}
+
+async function generatePdf() {
+  var pdfBtn = document.getElementById('pdf-btn');
+  var preBtn = document.getElementById('pdf-preview-btn');
+  pdfBtn.disabled = true;
+  preBtn.disabled = true;
+  pdfBtn.value = '読み込み中...';
+  try {
+    var pdf = await buildPdf(function(msg) { pdfBtn.value = msg; });
+    var proj  = val('f-project') || '報告書';
+    var dt    = val('f-date')    || '';
+    var fname = (proj + (dt ? '_' + dt : '') + '.pdf')
+                  .replace(/[\\/:*?"<>|]/g, '_');
+    pdf.save(fname);
+  } catch (e) {
+    console.error('PDF生成エラー:', e);
+    alert('PDF生成に失敗しました。\nネットワーク接続を確認してください。');
+  } finally {
+    pdfBtn.disabled = false;
+    preBtn.disabled = false;
+    pdfBtn.value = '📄 PDFで保存';
+  }
+}
+
+/* ===== ASRカメラ 写真自動読み込み ===== */
+async function loadCameraPhotos() {
+  var siteName = val('f-name');
+  var date     = val('f-date');
+  var statusEl = document.getElementById('auto-load-status');
+  var btn      = document.getElementById('auto-load-btn');
+
+  function setStatus(bg, color, border, msg) {
+    statusEl.style.cssText =
+      'display:block;padding:10px 12px;border-radius:6px;font-size:14px;font-weight:bold;margin:8px 0;' +
+      'background:' + bg + ';color:' + color + ';border:1px solid ' + border + ';';
+    statusEl.textContent = msg;
+  }
 
   if (!siteName || !date) {
-    setStatus(statusEl, 'error', '❌ 現場名と日付を入力してください');
+    setStatus('#fdecea', '#c0392b', '#ef9a9a', '❌ 名称（現場名称）と作業日を入力してください');
     return;
   }
 
-  setStatus(statusEl, 'loading', '⏳ 写真データを取得中...');
   btn.disabled = true;
+  setStatus('#e3f2fd', '#1565c0', '#90caf9', '⏳ 写真データを取得中...');
 
   try {
-    var r = await fetch(GAS_URL, {
+    var r    = await fetch(GAS_URL, {
       method: 'POST',
-      body: JSON.stringify({ type: 'get_camera_data', siteName: siteName, date: date })
+      body:   JSON.stringify({ type: 'get_camera_data', siteName: siteName, date: date })
     });
-    var res = await r.json();
-    console.log('[ASR-AUTO] GASレスポンス:', res);
+    var text = await r.text();
+    console.log('[ASR-AUTO] GASレスポンス:', text);
+    var res  = JSON.parse(text);
 
     if (res.status === 'notfound') {
-      setStatus(statusEl, 'error', '❌ 該当データが見つかりません（現場名・日付を確認してください）');
+      setStatus('#fff8e1', '#e65100', '#ffcc02', '⚠️ 該当データが見つかりません（名称・作業日を確認）');
       return;
     }
-    if (res.status !== 'ok') {
-      throw new Error(res.message || 'GASエラー');
-    }
+    if (res.status !== 'ok') throw new Error(res.message || 'GASエラー');
 
-    loadedData = res.data;
-    renderPreview(res.data);
-    setStatus(statusEl, 'ok', '✅ 写真データを取得しました');
-    document.getElementById('photos-area').style.display = 'block';
+    var data   = res.data;
+    /* ASRカメラのカテゴリ → プレビューエリアIDのマッピング */
+    var catMap = { '作業前': 'before', '作業後': 'after', '点検': 'other' };
+    var loaded = [];
+
+    Object.keys(catMap).forEach(function(cat) {
+      var key     = catMap[cat];
+      var catData = data[cat];
+      if (!catData) return;
+
+      /* サムネイルをプレビューエリアに追加（手動追加済みの写真はそのまま） */
+      var box = document.getElementById('prev-' + key);
+      if (box) {
+        (catData.photos || []).forEach(function(fileId) {
+          addUrlPreview('https://drive.google.com/thumbnail?id=' + fileId + '&sz=w300', box);
+        });
+      }
+
+      /* アルバムリンク表示 */
+      var linkEl = document.getElementById('album-link-' + key);
+      if (linkEl && catData.url) {
+        linkEl.innerHTML =
+          '📁 <a href="' + catData.url + '" target="_blank" style="color:#1565c0;word-break:break-all;">' +
+          cat + 'アルバムを開く → ' + catData.url + '</a>';
+        linkEl.style.display = 'block';
+      }
+
+      loaded.push(cat);
+    });
+
+    document.getElementById('auto-album-links').style.display = 'block';
+    setStatus('#e8f5ec', '#1a5c2a', '#a5d6a7',
+      '✅ ' + (loaded.length ? loaded.join('・') : '0件') + ' の写真を取得しました（手動追加も可能）');
 
   } catch (e) {
     console.error('[ASR-AUTO] エラー:', e);
-    setStatus(statusEl, 'error', '❌ 取得失敗：' + e.message);
+    setStatus('#fdecea', '#c0392b', '#ef9a9a', '❌ 取得失敗：' + e.message);
   } finally {
     btn.disabled = false;
   }
 }
 
-var CAT_MAP = { '作業前': 'before', '作業後': 'after', '点検': 'inspect' };
+/* 初期エリアを1つ追加 */
+addArea();
 
-function renderPreview(data) {
-  Object.keys(CAT_MAP).forEach(function(cat) {
-    var key     = CAT_MAP[cat];
-    var catData = data[cat];
-    var gridEl  = document.getElementById('grid-' + key);
-    var linkEl  = document.getElementById('link-' + key);
+/* 今日の日付をセット */
+var d = new Date();
+document.getElementById('f-date').value =
+  d.getFullYear() + '-' +
+  ('0' + (d.getMonth() + 1)).slice(-2) + '-' +
+  ('0' + d.getDate()).slice(-2);
 
-    gridEl.innerHTML = '';
+/* ===== PWA ホーム画面アイコンを Canvas で生成 ===== */
+(function() {
+  try {
+    var c   = document.createElement('canvas');
+    c.width = 180; c.height = 180;
+    var ctx = c.getContext('2d');
 
-    if (!catData) {
-      gridEl.innerHTML = '<span class="no-data">データなし</span>';
-      return;
-    }
+    var r = 36;
+    ctx.fillStyle = '#1a5c2a';
+    ctx.beginPath();
+    ctx.moveTo(r, 0);
+    ctx.lineTo(180 - r, 0);
+    ctx.quadraticCurveTo(180, 0,   180, r);
+    ctx.lineTo(180, 180 - r);
+    ctx.quadraticCurveTo(180, 180, 180 - r, 180);
+    ctx.lineTo(r, 180);
+    ctx.quadraticCurveTo(0, 180,   0, 180 - r);
+    ctx.lineTo(0, r);
+    ctx.quadraticCurveTo(0, 0,     r, 0);
+    ctx.closePath();
+    ctx.fill();
 
-    (catData.photos || []).forEach(function(fileId) {
-      var img = document.createElement('img');
-      img.src = 'https://drive.google.com/thumbnail?id=' + fileId + '&sz=w300';
-      img.alt = cat;
-      img.loading = 'lazy';
-      img.onerror = function() { this.style.display = 'none'; };
-      gridEl.appendChild(img);
-    });
+    ctx.fillStyle    = '#a8d5b0';
+    ctx.font         = 'bold 80px sans-serif';
+    ctx.textAlign    = 'center';
+    ctx.textBaseline = 'alphabetic';
+    ctx.fillText('草', 90, 110);
 
-    if (catData.url) {
-      linkEl.href = catData.url;
-      linkEl.style.display = 'inline-block';
-    }
-  });
-}
+    ctx.fillStyle = '#ffffff';
+    ctx.font      = 'bold 26px sans-serif';
+    ctx.fillText('報告書', 90, 158);
 
-/* ===== 報告書生成 ===== */
-function generateReport() {
-  var siteName    = v('site-name');
-  var date        = v('work-date');
-  var startTime   = v('start-time');
-  var endTime     = v('end-time');
-  var workerName  = v('worker-name');
-  var projectName = v('project-name');
-  var jobNo       = v('job-no');
-  var location    = v('location');
-  var workContent = v('work-content');
-  var remarks     = v('remarks');
-  var nextPlan    = v('next-plan');
-
-  var timeRange = startTime && endTime
-    ? startTime + ' ～ ' + endTime
-    : startTime || endTime || '—';
-
-  /* サブタイトル */
-  document.getElementById('r-sub').textContent =
-    (siteName || '—') + '　' + (date || '—');
-
-  /* 基本情報テーブル */
-  var rows = [
-    ['現場名',    siteName],
-    ['日付',      date],
-    ['作業時間',  timeRange],
-    ['担当者名',  workerName],
-    ['案件名',    projectName],
-    ['工番',      jobNo],
-    ['所在地',    location]
-  ];
-  var tbl = document.getElementById('r-table');
-  tbl.innerHTML = rows.map(function(r) {
-    return '<tr><th>' + esc(r[0]) + '</th><td>' + esc(r[1]) + '</td></tr>';
-  }).join('');
-
-  /* 写真エリア */
-  Object.keys(CAT_MAP).forEach(function(cat) {
-    var key     = CAT_MAP[cat];
-    var catData = loadedData[cat];
-    var urlEl   = document.getElementById('r-url-' + key);
-    var photoEl = document.getElementById('r-photos-' + key);
-
-    urlEl.innerHTML   = '';
-    photoEl.innerHTML = '';
-
-    if (!catData) {
-      photoEl.innerHTML = '<span class="no-data">データなし</span>';
-      return;
-    }
-
-    if (catData.url) {
-      urlEl.innerHTML = '<a href="' + catData.url + '" target="_blank">' + esc(catData.url) + '</a>';
-    }
-
-    (catData.photos || []).forEach(function(fileId) {
-      var img = document.createElement('img');
-      img.src = 'https://drive.google.com/thumbnail?id=' + fileId + '&sz=w300';
-      img.alt = cat;
-      img.loading = 'lazy';
-      img.onerror = function() { this.style.display = 'none'; };
-      photoEl.appendChild(img);
-    });
-
-    if (!catData.photos || catData.photos.length === 0) {
-      photoEl.innerHTML = '<span class="no-data">写真なし</span>';
-    }
-  });
-
-  /* テキストエリア */
-  document.getElementById('r-work-content').textContent = workContent || '—';
-  document.getElementById('r-remarks').textContent      = remarks     || '—';
-  document.getElementById('r-next-plan').textContent    = nextPlan    || '—';
-
-  /* 表示切替 */
-  document.getElementById('view-form').style.display   = 'none';
-  document.getElementById('view-report').style.display = 'block';
-  window.scrollTo(0, 0);
-}
-
-function backToEdit() {
-  document.getElementById('view-report').style.display = 'none';
-  document.getElementById('view-form').style.display   = 'block';
-}
-
-/* ===== ユーティリティ ===== */
-function v(id) { return (document.getElementById(id).value || '').trim(); }
-
-function esc(s) {
-  return (s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-}
-
-function setStatus(el, type, msg) {
-  el.className = 'status ' + type;
-  el.textContent = msg;
-}
+    var link = document.getElementById('touch-icon');
+    if (link) link.href = c.toDataURL('image/png');
+  } catch(e) {}
+})();
 </script>
+
 </body>
 </html>

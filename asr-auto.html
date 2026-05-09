@@ -1517,7 +1517,8 @@ async function generatePdf() {
 /* ===== ASRカメラ 写真自動読み込み ===== */
 async function loadCameraPhotos() {
   var siteName = val('f-name');
-  var date     = val('f-date');
+  var dateRaw  = val('f-date');
+  var date     = dateRaw.replace(/-/g, '/');  // 2026-05-10 → 2026/05/10
   var statusEl = document.getElementById('auto-load-status');
   var btn      = document.getElementById('auto-load-btn');
 
@@ -1535,6 +1536,7 @@ async function loadCameraPhotos() {
 
   btn.disabled = true;
   setStatus('#e3f2fd', '#1565c0', '#90caf9', '⏳ 写真データを取得中...');
+  console.log('[ASR-AUTO] 送信データ:', { siteName: siteName, date: date });
 
   try {
     var r    = await fetch(GAS_URL, {

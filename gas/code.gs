@@ -188,7 +188,7 @@ function makeJson(obj) {
 // 実行後: ログにフォルダIDが出れば OK。テストフォルダは自動削除。
 // =================================================================
 function testDriveAccess() {
-  var folder = DriveApp.createFolder('テスト');
+  var folder = DriveApp.createFolder('テスト確認用');
   Logger.log(folder.getId());
   folder.setTrashed(true);
 }

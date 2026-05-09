@@ -92,12 +92,18 @@ function uploadPhotosAndGetUrl(data) {
 }
 
 // =================================================================
-// ASRカメラのURLをスプレッドシートに縦配列で書き込む（camera.html STEP3）
+// ASRカメラのURLをスプレッドシートに書き込む（camera.html STEP3）
 //
-// 書き込みイメージ:
-//   行1: 作業前 | https://drive.google.com/drive/folders/...
-//   行2: 作業後 | https://drive.google.com/drive/folders/...
-//   行3: 点検   | https://drive.google.com/drive/folders/...
+// 受け取るデータ:
+//   {
+//     type:     "camera_asr",
+//     siteName: "テスト現場",
+//     date:     "2026-05-09",
+//     modes:    [{ name: "作業前", url: "https://..." }, ...]
+//   }
+//
+// 書き込み形式（1カテゴリ1行）:
+//   A列: 現場名  B列: 日付  C列: カテゴリ  D列: アルバムURL
 // =================================================================
 function saveCameraToSheet(data) {
   var ss    = SpreadsheetApp.openById(SPREADSHEET_ID);
@@ -107,8 +113,9 @@ function saveCameraToSheet(data) {
     sheet = ss.insertSheet(CAMERA_SHEET);
   }
 
-  if (sheet.getLastRow() === 0) {
-    sheet.appendRow(CAMERA_HEADERS);
+  if (sheet.getRange(1, 1).getValue() !== CAMERA_HEADERS[0]) {
+    sheet.insertRowBefore(1);
+    sheet.getRange(1, 1, 1, CAMERA_HEADERS.length).setValues([CAMERA_HEADERS]);
     sheet.getRange(1, 1, 1, CAMERA_HEADERS.length)
          .setFontWeight('bold')
          .setBackground('#dce8ff');
